@@ -1,0 +1,593 @@
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head><meta content="text/html; charset=utf-8" http-equiv="Content-Type"/><title>File: README</title><link type="text/css" href=".././rdoc-style.css" media="screen" rel="stylesheet"/><script type="text/javascript">
+// Allison template
+// Copyright 2007, 2008 Cloudburst, LLC. Licensed under the AFL 3. See the included LICENSE file.
+
+var href_base = '.././rdoc-style.css'.replace(/(.*\/).*/, '$1'); // inline js is good for something  
+
+function $(id) {
+    if (document.getElementById)
+      elem = document.getElementById(id);
+    else if ( document.all )
+      elem = eval("document.all." + id);
+    else
+      return false;
+    return elem;
+}
+
+  function toggle(id) {
+    elem = $(id);
+    elemStyle = elem.style;   
+    if (elemStyle.display == "block") {
+      elemStyle.display = "none"
+    } else {
+      elemStyle.display = "block"
+    }
+    return true;
+  }
+
+  function toggleText(id) {
+    elem = $(id)
+    if (m = elem.innerHTML.match(/(Hide)(.*)/)) {
+      elem.innerHTML = "Show" + m[2];
+    } else if (m = elem.innerHTML.match(/(Show)(.*)/)) {
+      elem.innerHTML = "Hide" + m[2];
+    }
+    return true;
+  }
+
+function span(s, klass) {
+  return '<span class="' + klass + '">' + s + '</span>';
+}
+  
+function highlightSymbols() {
+  pres = document.getElementsByTagName('pre');
+  for(var i = 0; i < pres.length; i++) {
+    pre = pres[i];
+    spans = pre.getElementsByTagName('span');
+    for(var k = 0; k < spans.length; k++) {
+      span = spans[k];
+      if (span.className.match(/ruby-identifier/)) {
+        if (span.innerHTML.match(/^:/)) {
+          span.className += " ruby-symbol";
+        }
+      }
+    }
+  }
+}
+
+ function hasClass(obj) {
+     var result = false;
+     if (obj.getAttributeNode("class") != null) {
+         result = obj.getAttributeNode("class").value;
+     }
+     return result;
+  }   
+
+ function stripe() {
+    var even = true;
+    var color = "#e4ebed";
+    var tables = document.getElementsByTagName('table');
+    if (tables.length == 0) { return; }
+    for (var h = 0; h < tables.length; h++) {
+        var trs = tables[h].getElementsByTagName("tr");
+        for (var i = 0; i < trs.length; i++) {
+          var tds = trs[i].getElementsByTagName("td");
+            for (var j = 0; j < tds.length; j++) {       
+              if (hasClass(tds[j]) != "first") {                
+              var mytd = tds[j];
+              if (even) {
+                mytd.style.backgroundColor = color;
+              }         
+            }
+          }
+          even =  ! even;
+      }
+    }
+  }
+  
+function ajaxGet(url) {
+  url = (href_base + url).replace('/./', '/')
+  var req = false;
+
+  if (window.ActiveXObject) {
+    try {
+      // stupid hack because IE7 disables local Ajax with the native xmlhttprequest object
+      // for security purposes. Yet ActiveX still works. Thanks, Microsoft. I hate you. Die.
+      req = new ActiveXObject("MSXML2.XMLHTTP.3.0");
+    } catch (e) {
+      try {
+        /* IE 6 and maybe 5, don't know, don't care */
+        req = new ActiveXObject("Msxml2.XMLHTTP");
+      } catch (e) {
+        try {
+          req = new ActiveXObject("Microsoft.XMLHTTP");
+        } catch (e) {
+          req = false;
+        }
+      }
+    }
+  }
+    
+  /* real browsers */
+  if (!req && window.XMLHttpRequest) {
+    try {
+      req = new XMLHttpRequest();
+    } catch (e) {
+      req = false;
+    }
+  } 
+  
+  if (req) {
+    req.open('GET', url, false);
+    req.send(null);
+    return req.responseText;
+  } else {
+    return "Ajax error";  
+  }
+}
+
+
+function addEvent(elm, evType, fn, useCapture) {
+	if (elm.addEventListener) {
+	  elm.addEventListener(evType, fn, useCapture);  
+  	return true;
+	} else if (elm.attachEvent) {
+  	var r = elm.attachEvent('on' + evType, fn);  
+	  return r;  
+	} else {
+  	elm['on' + evType] = fn;
+	}
+}
+
+function insertIndices() {
+  pages = ["class", "file", "method"]
+  for (x in pages) { 
+    $(pages[x]).innerHTML += ajaxGet('fr_' + pages[x] + '_index.html').replace(/(href=")/g, '$1' + href_base);
+  }
+  /* mouseoverify method links */
+  links = $('method').getElementsByTagName('a');
+  for (var x = 0; x < links.length; x++) {
+    if (m = links[x].innerHTML.match(/(.*)\s\((.*)\)/)) {
+      links[x].innerHTML = m[1] + '<br>';
+      links[x].title = m[2];
+    }
+  }
+  /* this is stupid */
+  $('class').style.display = "block";
+  $('file').style.display = "block";
+  
+  /* has to be here because IE7 does not guarantee the onLoad callback order */
+  abbreviateIndicesInner(["class", "file"], 25, "a");
+  /* same, linkTitle() depends on the class link list */
+  linkTitle();
+}
+
+function abbreviateIndices() {
+  var ids = ["defined_in", "child_of", "includes", "requires", "method", "methods"];
+  abbreviateIndicesInner(ids, 25, 'a');
+  abbreviateIndicesInner(ids, 25, 'span');
+}
+
+function abbreviateIndicesInner(indices, amount, tag) {
+  for (var x = 0; x < indices.length; x++) { 
+    var the_index = $(indices[x]);
+    if (the_index) {
+      links = the_index.getElementsByTagName(tag);
+      for (var y = 0; y < links.length; y++) {
+        var link = links[y];
+        if (link.getElementsByTagName('span').length == 0 && link.getElementsByTagName('a').length == 0) {
+          // avoid nesting
+          link.innerHTML = link.innerHTML.replace(/<br>|\n/gi, '');
+          link.title = link.innerHTML;
+          link.innerHTML = abbreviate(link.innerHTML, amount) + '<br>';
+        }
+      }
+    }
+  }
+}
+
+function linkTitle() {
+  
+  /* grab the correct title element from the index */
+  var index_page = ajaxGet('index.html');
+  title_text = index_page.match(/<title>(.*)<\/title>/m)[1];
+  document.title = title_text + " - " + document.title;
+  var p = $('header').getElementsByTagName('p')[0]
+  if (p.innerHTML.match(/^\s*$/)) {
+    p.innerHTML = title_text;
+  } else {
+    p.innerHTML = title_text + ": " + p.innerHTML;
+  }
+  
+  /* set the link properly */
+  title_link = index_page.match(/<a\s+href="(.*?)"/)[1];
+  var element = $('title');
+  var item_type = "";
+  var item_name = "";
+  if (m = element.innerHTML.match(/(Class:|Module:|File:)\s*(.*)/)) {
+    item_type = m[1];
+    item_name = m[2];
+  } else {
+    item_name = element.innerHTML;
+  }
+  element.innerHTML = '<a href="' + href_base + title_link + '">' + item_type + " " + abbreviate(item_name, 45) + '</a>';
+  element.getElementsByTagName('a')[0].title = item_name
+  
+  /* breadcrumb navigation */
+  items = item_name.split("::");
+  items_new = item_name.split("::");
+  file_links = $('class').getElementsByTagName('a');
+  for (var x = 0; x < items.length - 1; x++ ){
+    var item = items[x];
+    link = ("/classes/" + items.slice(0,x).join("/") + "/" + item + ".html").replace('//', '/');
+    regex = new RegExp(RegExp.escape(link) + '$');
+    for (var y = 0; y < file_links.length; y++) {
+      if (file_links[y].href.match(regex)) {
+         items_new[x] = '<a href="' + href_base + link + '">' + item + '</a>';
+         break;
+      }
+    }  
+  }
+  $('item_name').innerHTML = item_type + ' ' + items_new.join(" :: ");
+}
+
+function abbreviate(s, size) {
+  while (s.length > size) {
+    var old_s = s;
+    s = s.replace(/\s|\n/mg, '');
+    s = s.replace(/([A-Z])[a-z]+/m, '$1');
+    if (!s || old_s == s) {
+      return "..." + s.substring(s.length - size, s.length);
+    }
+  }
+  return s;
+}
+
+function disableSubmit(event) {
+  var keyCode = event.keyCode ? event.keyCode : event.which ? event.which : event.charCode;
+  if (keyCode == 13) {
+    return false;
+  } else {
+    return true;
+  }
+}
+  
+function filterList(id, s, event) {
+  
+  /* some weak escaping */
+  s = s.replace(/[^\w\d\.\_\-\/\:\=\[\]\?\!]/g, '');
+  s = RegExp.escape(s);
+  
+  var show_all = false;
+  if (s.match(/^\s*$/)) {
+    show_all = true;
+  }
+  
+  links = $(id).getElementsByTagName('a')
+  regex = new RegExp(s, 'i');
+  
+  for (var x = 0; x < links.length; x++) {
+    var link = links[x];
+    if (show_all) {
+      link.style.display = 'inline';
+    } else {
+       if (link.innerHTML.match(regex)) {        
+         link.style.display = 'inline';
+       } else {
+         link.style.display = 'none';
+       }
+    }
+  }
+  return true;
+}
+
+RegExp.escape = function(text) {
+  if (!arguments.callee.sRE) {
+    var specials = ['/', '.', '*', '+', '?', '|', '(', ')', '[', ']', '{', '}', '\\'];
+    arguments.callee.sRE = new RegExp(
+      '(\\' + specials.join('|\\') + ')', 'g'
+    );
+  }
+  return text.replace(arguments.callee.sRE, '\\$1');
+}
+
+function hacks() {
+  // show the spacer if necessary, 
+  divs = document.getElementsByTagName('div');
+  for(var x = 0; x < divs.length; x++) {
+    if (divs[x].className && divs[x].className.match(/top/)) {
+      document.getElementById('spacer').style.display = 'block';
+    }
+  }
+  // remove extra colons from tables
+  tds = document.getElementsByTagName('td');
+  for(var x = 0; x < tds.length; x++) {
+    str = tds[x].innerHTML
+    if (str.charAt(str.length - 1) == ":") {
+      tds[x].innerHTML = str.slice(0, str.length - 1)
+    }
+  }
+}
+
+addEvent(window, 'load', insertIndices, false);
+addEvent(window, 'load', abbreviateIndices, false);
+addEvent(window, 'load', stripe, false);
+addEvent(window, 'load', highlightSymbols, false);
+addEvent(window, 'load', hacks, false);
+</script></head><body><div id="container"><div class="curve" id="preheader_curve_0"></div><div class="curve" id="preheader_curve_1"></div><div class="curve" id="preheader_curve_2"></div><div class="curve" id="preheader_curve_3"></div><div class="curve" id="preheader_curve_4"></div><div class="curve" id="preheader_curve_5"></div><div id="header"><p>
+README
+</p><span><h1 id="title">
+File: README
+</h1></span>
+</div><div class="clear"></div><div id="left">
+
+
+
+
+<div id="spacer"></div><div class="navigation darker index" id="class_wrapper"><div class="list_header"><h3>All classes</h3></div><div class="list_header_link"><a onclick="toggle('class'); toggleText('class_link'); return false;" href="#" id="class_link">Hide...</a></div><div class="clear"></div><div id="class"><form><label for="filter_class">Filter:&nbsp;&nbsp;</label><input type="text" onKeyUp="return filterList('class', this.value, event);" onKeyPress="return disableSubmit(event);" id="filter_class"></input></form></div></div><div class="navigation darker index" id="file_wrapper"><div class="list_header"><h3>All files</h3></div><div class="list_header_link"><a onclick="toggle('file'); toggleText('file_link'); return false;" href="#" id="file_link">Hide...</a></div><div class="clear"></div><div id="file"><form><label for="filter_file">Filter:&nbsp;&nbsp;</label><input type="text" onKeyUp="return filterList('file', this.value, event);" onKeyPress="return disableSubmit(event);" id="filter_file"></input></form></div></div><div class="navigation darker index" id="method_wrapper"><div class="list_header"><h3>All methods</h3></div><div class="list_header_link"><a onclick="toggle('method'); toggleText('method_link'); return false;" href="#" id="method_link">Show...</a></div><div class="clear"></div><div id="method"><form><label for="filter_method">Filter:&nbsp;&nbsp;</label><input type="text" onKeyUp="return filterList('method', this.value, event);" onKeyPress="return disableSubmit(event);" id="filter_method"></input></form></div></div></div><div id="content">
+<h1 id="item_name">File: README</h1>
+
+<div id="description"><p>
+<a href="../classes/Ultrasphinx.html">Ultrasphinx</a>
+</p>
+<p>
+Ruby on Rails configurator and client to the Sphinx full text search
+engine.
+</p>
+<h2>License</h2>
+<p>
+Copyright 2007-2008 Cloudburst, LLC. Licensed under the AFL 3. See the
+included LICENSE file. Some portions copyright Pat Allan, distributed under
+the MIT license, and used with permission. Some portions copyright PJ Hyett
+and Mislav Marohnić, distributed under the MIT license, and used with
+permission.
+</p>
+<h2>Requirements</h2>
+<ul>
+<li>MySQL 5.0, or PostgreSQL 8.2
+
+</li>
+<li>Sphinx 0.9.8-rc2
+
+</li>
+<li>Rails 2.0.2
+
+</li>
+</ul>
+<p>
+More recent versions than listed are usually ok.
+</p>
+<h2>Features</h2>
+<p>
+Sphinx/<a href="../classes/Ultrasphinx.html">Ultrasphinx</a> is the fastest
+and most stable Rails fulltext search solution.
+</p>
+<p>
+Features include:
+</p>
+<ul>
+<li>searching and ranking across multiple models
+
+</li>
+<li>delta index support
+
+</li>
+<li>excerpt highlighting
+
+</li>
+<li>Google-style query parser
+
+</li>
+<li>spellcheck
+
+</li>
+<li>faceting on text, date, and numeric fields
+
+</li>
+<li>field weighting, merging, and aliasing
+
+</li>
+<li>geodistance
+
+</li>
+<li><tt>belongs_to</tt> and <tt>has_many</tt> includes
+
+</li>
+<li>drop-in compatibility with <a
+href="http://err.lighthouseapp.com/projects/466/home">will_paginate</a>
+
+</li>
+<li>drop-in compatibility with <a
+href="http://blog.evanweaver.com/files/doc/fauna/interlock/">Interlock</a>
+
+</li>
+<li>multiple deployment environments
+
+</li>
+<li>comprehensive Rake tasks
+
+</li>
+</ul>
+<p>
+And some other things.
+</p>
+<h1>Usage</h1>
+<h2>Installation</h2>
+<p>
+First, install Sphinx itself. Get the <a
+href="http://www.sphinxsearch.com/downloads.html">0.9.8 snapshot</a>, then
+run <tt>./configure</tt>, <tt>make</tt>, and <tt>sudo make install</tt>.
+Make sure to set your <tt>./configure</tt> flags: <tt>&#8212;-prefix</tt>
+if necessary, and also <tt>&#8212;-with-pgsql</tt> if you need Postgres
+support.
+</p>
+<p>
+You also need the <tt>chronic</tt> gem:
+</p>
+<pre>
+  sudo gem install chronic
+</pre>
+<p>
+Then, install the plugin:
+</p>
+<pre>
+  script/plugin install git://github.com/fauna/ultrasphinx.git
+</pre>
+<p>
+Next, copy the <tt>examples/default.base</tt> file to
+<tt>RAILS_ROOT/config/ultrasphinx/default.base</tt>. This file sets up the
+Sphinx daemon options such as port, host, and index location.
+</p>
+<p>
+If you need per-environment configuration, you can use
+<tt>RAILS_ROOT/config/ultrasphinx/development.base</tt>, etc. Note that ERb
+is also allowed within the <tt>.base</tt> files, and can be an alternative
+way to DRY up multiple configurations.
+</p>
+<p>
+Now, in your models, use the <tt>is_indexed</tt> method to configure a
+model as searchable. For example:
+</p>
+<pre>
+  class Post
+    is_indexed :fields =&gt; ['created_at', 'title', 'body']
+  end
+</pre>
+<p>
+For more index options, see <a
+href="../classes/ActiveRecord/Base.html">ActiveRecord::Base</a>
+.is_indexed.
+</p>
+<h2>Building the index</h2>
+<p>
+Now run:
+</p>
+<pre>
+  rake ultrasphinx:configure
+  rake ultrasphinx:index
+  rake ultrasphinx:daemon:start
+</pre>
+<p>
+To rotate the index, just rerun <tt>rake ultrasphinx:index</tt>. If the
+search daemon is running, it will have its index rotated live. Otherwise
+the new index will be installed but the daemon will remain stopped.
+</p>
+<h2>Running queries</h2>
+<p>
+Query the daemon as so:
+</p>
+<pre>
+  @search = Ultrasphinx::Search.new(:query =&gt; @query)
+  @search.run
+  @search.results
+</pre>
+<p>
+For more query options, including excerpt mode, see <a
+href="../classes/Ultrasphinx/Search.html">Ultrasphinx::Search</a>.
+</p>
+<h1>Extras</h1>
+<h2>Pagination</h2>
+<p>
+Once the <tt>@search</tt> object has been <tt>run</tt>, it is directly
+compatible with the <tt>will_paginate</tt> view helper. In your view, just
+do:
+</p>
+<pre>
+  &lt;%= will_paginate(@search) %&gt;
+</pre>
+<h2>Spell checking</h2>
+<p>
+See <a href="../classes/Ultrasphinx/Spell.html">Ultrasphinx::Spell</a>.
+</p>
+<h2>Delta indexing</h2>
+<p>
+Delta indexing speeds up your updates by not reindexing the entire dataset
+every time.
+</p>
+<p>
+First, in your <tt>.base</tt> file, set the indexer option <tt>delta</tt>
+to your maximum interval between full reindexes. A day or a week is good,
+depending. Add a little bit to account for the time it takes the actual
+index to run:
+</p>
+<pre>
+  delta = &lt;%= 1.day + 30.minutes %&gt;
+</pre>
+<p>
+Now, configure your models for delta indexing in the <tt>is_indexed</tt>
+call:
+</p>
+<pre>
+  is_indexed :fields =&gt; ['created_at', 'title', 'body'],
+    :delta =&gt; true
+</pre>
+<p>
+Now you can run <tt>rake ultrasphinx:index:delta</tt> frequently, and only
+records that were changed within 1 day will be reindexed. You will need to
+run <tt>rake ultrasphinx:index:main</tt> once a day to move the delta
+contents into the main index.
+</p>
+<p>
+See <a href="../classes/ActiveRecord/Base.html">ActiveRecord::Base</a>
+.is_indexed and <a href="DEPLOYMENT_NOTES.html">DEPLOYMENT_NOTES</a> for
+more.
+</p>
+<h2>Available Rake tasks</h2>
+<p>
+See <a href="RAKE_TASKS.html">RAKE_TASKS</a>.
+</p>
+<h2>Deployment notes</h2>
+<p>
+See <a href="DEPLOYMENT_NOTES.html">DEPLOYMENT_NOTES</a>.
+</p>
+<h2>Gotchas</h2>
+<p>
+Note that since <a href="../classes/Ultrasphinx.html">Ultrasphinx</a>
+preloads indexed models, you need to make sure those models have their own
+dependencies in place early in the boot process. This may require adjusting
+the general plugin load order or moving monkey-patches from <tt>lib/</tt>
+to <tt>vendor/plugins/</tt>.
+</p>
+<p>
+PostgreSQL 8.2 and higher are well supported. However, make sure the stored
+procedure migration gets generated correctly. If you did not install the
+plugin via <tt>script/install</tt>, run <tt>script/generate
+ultrasphinx_migration</tt> by hand.
+</p>
+<h2>Reporting problems</h2>
+<p>
+The support forum is <a
+href="http://github.com/fauna/ultrasphinx/issues">here</a>.
+</p>
+<p>
+Patches and contributions are very welcome. Please note that contributors
+are required to assign copyright for their additions to Cloudburst, LLC.
+</p>
+<h2>Further resources</h2>
+<ul>
+<li><a href="http://sphinxsearch.com/doc.html">sphinxsearch.com/doc.html</a>
+
+</li>
+<li><a
+href="http://sphinxsearch.com/forum/forum.html?id=1">sphinxsearch.com/forum/forum.html?id=1</a>
+
+</li>
+<li><a
+href="http://blog.evanweaver.com/articles/2007/07/09/ultrasphinx-searching-the-world-in-231-seconds">blog.evanweaver.com/articles/2007/07/09/ultrasphinx-searching-the-world-in-231-seconds</a>
+
+</li>
+</ul>
+</div>
+
+
+
+
+<p></p>
+
+
+
+
+
+
+
+</div><div class="clear" id="footer">Generated on Jan 21, 2008 / Allison 2 &copy; 2007 <a href="http://cloudbur.st">Cloudburst, LLC</a></div></div></body></html>

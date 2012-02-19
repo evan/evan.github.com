@@ -1,0 +1,1556 @@
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en"><head><meta content="text/html; charset=utf-8" http-equiv="Content-Type"/><title>Class: Thrift::BaseProtocol</title><link type="text/css" rel="stylesheet" media="screen" href="../.././rdoc-style.css"/><script type="text/javascript">
+// Allison template
+// Copyright 2007, 2008 Cloudburst, LLC. Licensed under the AFL 3. See the included LICENSE file.
+
+var href_base = '../.././rdoc-style.css'.replace(/(.*\/).*/, '$1'); // inline js is good for something  
+
+function $(id) {
+    if (document.getElementById)
+      elem = document.getElementById(id);
+    else if ( document.all )
+      elem = eval("document.all." + id);
+    else
+      return false;
+    return elem;
+}
+
+  function toggle(id) {
+    elem = $(id);
+    elemStyle = elem.style;   
+    if (elemStyle.display == "block") {
+      elemStyle.display = "none"
+    } else {
+      elemStyle.display = "block"
+    }
+    return true;
+  }
+
+  function toggleText(id) {
+    elem = $(id)
+    if (m = elem.innerHTML.match(/(Hide)(.*)/)) {
+      elem.innerHTML = "Show" + m[2];
+    } else if (m = elem.innerHTML.match(/(Show)(.*)/)) {
+      elem.innerHTML = "Hide" + m[2];
+    }
+    return true;
+  }
+
+function span(s, klass) {
+  return '<span class="' + klass + '">' + s + '</span>';
+}
+  
+function highlightSymbols() {
+  pres = document.getElementsByTagName('pre');
+  for(var i = 0; i < pres.length; i++) {
+    pre = pres[i];
+    spans = pre.getElementsByTagName('span');
+    for(var k = 0; k < spans.length; k++) {
+      span = spans[k];
+      if (span.className.match(/ruby-identifier/)) {
+        if (span.innerHTML.match(/^:/)) {
+          span.className += " ruby-symbol";
+        }
+      }
+    }
+  }
+}
+
+ function hasClass(obj) {
+     var result = false;
+     if (obj.getAttributeNode("class") != null) {
+         result = obj.getAttributeNode("class").value;
+     }
+     return result;
+  }   
+
+ function stripe() {
+    var even = true;
+    var color = "#e4ebed";
+    var tables = document.getElementsByTagName('table');
+    if (tables.length == 0) { return; }
+    for (var h = 0; h < tables.length; h++) {
+        var trs = tables[h].getElementsByTagName("tr");
+        for (var i = 0; i < trs.length; i++) {
+          var tds = trs[i].getElementsByTagName("td");
+            for (var j = 0; j < tds.length; j++) {       
+              if (hasClass(tds[j]) != "first") {                
+              var mytd = tds[j];
+              if (even) {
+                mytd.style.backgroundColor = color;
+              }         
+            }
+          }
+          even =  ! even;
+      }
+    }
+  }
+  
+function ajaxGet(url) {
+  url = (href_base + url).replace('/./', '/')
+  var req = false;
+
+  if (window.ActiveXObject) {
+    try {
+      // stupid hack because IE7 disables local Ajax with the native xmlhttprequest object
+      // for security purposes. Yet ActiveX still works. Thanks, Microsoft. I hate you. Die.
+      req = new ActiveXObject("MSXML2.XMLHTTP.3.0");
+    } catch (e) {
+      try {
+        /* IE 6 and maybe 5, don't know, don't care */
+        req = new ActiveXObject("Msxml2.XMLHTTP");
+      } catch (e) {
+        try {
+          req = new ActiveXObject("Microsoft.XMLHTTP");
+        } catch (e) {
+          req = false;
+        }
+      }
+    }
+  }
+    
+  /* real browsers */
+  if (!req && window.XMLHttpRequest) {
+    try {
+      req = new XMLHttpRequest();
+    } catch (e) {
+      req = false;
+    }
+  } 
+  
+  if (req) {
+    req.open('GET', url, false);
+    req.send(null);
+    return req.responseText;
+  } else {
+    return "Ajax error";  
+  }
+}
+
+
+function addEvent(elm, evType, fn, useCapture) {
+	if (elm.addEventListener) {
+	  elm.addEventListener(evType, fn, useCapture);  
+  	return true;
+	} else if (elm.attachEvent) {
+  	var r = elm.attachEvent('on' + evType, fn);  
+	  return r;  
+	} else {
+  	elm['on' + evType] = fn;
+	}
+}
+
+function insertIndices() {
+  pages = ["class", "file", "method"]
+  for (x in pages) { 
+    $(pages[x]).innerHTML += ajaxGet('fr_' + pages[x] + '_index.html').replace(/(href=")/g, '$1' + href_base);
+  }
+  /* mouseoverify method links */
+  links = $('method').getElementsByTagName('a');
+  for (var x = 0; x < links.length; x++) {
+    if (m = links[x].innerHTML.match(/(.*)\s\((.*)\)/)) {
+      links[x].innerHTML = m[1] + '<br>';
+      links[x].title = m[2];
+    }
+  }
+  /* this is stupid */
+  $('class').style.display = "block";
+  $('file').style.display = "block";
+  
+  /* has to be here because IE7 does not guarantee the onLoad callback order */
+  abbreviateIndicesInner(["class", "file"], 25, "a");
+  /* same, linkTitle() depends on the class link list */
+  linkTitle();
+}
+
+function abbreviateIndices() {
+  var ids = ["defined_in", "child_of", "includes", "requires", "method", "methods"];
+  abbreviateIndicesInner(ids, 25, 'a');
+  abbreviateIndicesInner(ids, 25, 'span');
+}
+
+function abbreviateIndicesInner(indices, amount, tag) {
+  for (var x = 0; x < indices.length; x++) { 
+    var the_index = $(indices[x]);
+    if (the_index) {
+      links = the_index.getElementsByTagName(tag);
+      for (var y = 0; y < links.length; y++) {
+        var link = links[y];
+        if (link.getElementsByTagName('span').length == 0 && link.getElementsByTagName('a').length == 0) {
+          // avoid nesting
+          link.innerHTML = link.innerHTML.replace(/<br>|\n/gi, '');
+          link.title = link.innerHTML;
+          link.innerHTML = abbreviate(link.innerHTML, amount) + '<br>';
+        }
+      }
+    }
+  }
+}
+
+function linkTitle() {
+  
+  /* grab the correct title element from the index */
+  var index_page = ajaxGet('index.html');
+  title_text = index_page.match(/<title>(.*)<\/title>/m)[1];
+  document.title = title_text + " - " + document.title;
+  var p = $('header').getElementsByTagName('p')[0]
+  if (p.innerHTML.match(/^\s*$/)) {
+    p.innerHTML = title_text;
+  } else {
+    p.innerHTML = title_text + ": " + p.innerHTML;
+  }
+  
+  /* set the link properly */
+  title_link = index_page.match(/<a\s+href="(.*?)"/)[1];
+  var element = $('title');
+  var item_type = "";
+  var item_name = "";
+  if (m = element.innerHTML.match(/(Class:|Module:|File:)\s*(.*)/)) {
+    item_type = m[1];
+    item_name = m[2];
+  } else {
+    item_name = element.innerHTML;
+  }
+  element.innerHTML = '<a href="' + href_base + title_link + '">' + item_type + " " + abbreviate(item_name, 45) + '</a>';
+  element.getElementsByTagName('a')[0].title = item_name
+  
+  /* breadcrumb navigation */
+  items = item_name.split("::");
+  items_new = item_name.split("::");
+  file_links = $('class').getElementsByTagName('a');
+  for (var x = 0; x < items.length - 1; x++ ){
+    var item = items[x];
+    link = ("/classes/" + items.slice(0,x).join("/") + "/" + item + ".html").replace('//', '/');
+    regex = new RegExp(RegExp.escape(link) + '$');
+    for (var y = 0; y < file_links.length; y++) {
+      if (file_links[y].href.match(regex)) {
+         items_new[x] = '<a href="' + href_base + link + '">' + item + '</a>';
+         break;
+      }
+    }  
+  }
+  $('item_name').innerHTML = item_type + ' ' + items_new.join(" :: ");
+}
+
+function abbreviate(s, size) {
+  while (s.length > size) {
+    var old_s = s;
+    s = s.replace(/\s|\n/mg, '');
+    s = s.replace(/([A-Z])[a-z]+/m, '$1');
+    if (!s || old_s == s) {
+      return "..." + s.substring(s.length - size, s.length);
+    }
+  }
+  return s;
+}
+
+function disableSubmit(event) {
+  var keyCode = event.keyCode ? event.keyCode : event.which ? event.which : event.charCode;
+  if (keyCode == 13) {
+    return false;
+  } else {
+    return true;
+  }
+}
+  
+function filterList(id, s, event) {
+  
+  /* some weak escaping */
+  s = s.replace(/[^\w\d\.\_\-\/\:\=\[\]\?\!]/g, '');
+  s = RegExp.escape(s);
+  
+  var show_all = false;
+  if (s.match(/^\s*$/)) {
+    show_all = true;
+  }
+  
+  links = $(id).getElementsByTagName('a')
+  regex = new RegExp(s, 'i');
+  
+  for (var x = 0; x < links.length; x++) {
+    var link = links[x];
+    if (show_all) {
+      link.style.display = 'inline';
+    } else {
+       if (link.innerHTML.match(regex)) {        
+         link.style.display = 'inline';
+       } else {
+         link.style.display = 'none';
+       }
+    }
+  }
+  return true;
+}
+
+RegExp.escape = function(text) {
+  if (!arguments.callee.sRE) {
+    var specials = ['/', '.', '*', '+', '?', '|', '(', ')', '[', ']', '{', '}', '\\'];
+    arguments.callee.sRE = new RegExp(
+      '(\\' + specials.join('|\\') + ')', 'g'
+    );
+  }
+  return text.replace(arguments.callee.sRE, '\\$1');
+}
+
+function hacks() {
+  // show the spacer if necessary, 
+  divs = document.getElementsByTagName('div');
+  for(var x = 0; x < divs.length; x++) {
+    if (divs[x].className && divs[x].className.match(/top/)) {
+      document.getElementById('spacer').style.display = 'block';
+    }
+  }
+  // remove extra colons from tables
+  tds = document.getElementsByTagName('td');
+  for(var x = 0; x < tds.length; x++) {
+    str = tds[x].innerHTML
+    if (str.charAt(str.length - 1) == ":") {
+      tds[x].innerHTML = str.slice(0, str.length - 1)
+    }
+  }
+}
+
+addEvent(window, 'load', insertIndices, false);
+addEvent(window, 'load', abbreviateIndices, false);
+addEvent(window, 'load', stripe, false);
+addEvent(window, 'load', highlightSymbols, false);
+addEvent(window, 'load', hacks, false);
+</script></head><body><div id="container"><div class="curve" id="preheader_curve_0"></div><div class="curve" id="preheader_curve_1"></div><div class="curve" id="preheader_curve_2"></div><div class="curve" id="preheader_curve_3"></div><div class="curve" id="preheader_curve_4"></div><div class="curve" id="preheader_curve_5"></div><div id="header"><p>
+</p><span><h1 id="title">
+Class: Thrift::BaseProtocol
+</h1></span></div><div class="clear"></div><div id="left">
+<div class="navigation darker top" id="child_of"><h3>Child of</h3><span>
+
+Object
+</span></div>
+
+<div class="navigation darker top" id="defined_in"><h3>Defined in</h3>
+
+<a href="../../files/lib/thrift/protocol/base_protocol_rb.html">lib/thrift/protocol/base_protocol.rb</a>
+
+</div>
+
+
+
+<div class="navigation top" id="methods"><h3>Methods</h3>
+
+
+<a href='#M000035'>
+native?<br/>
+</a>
+
+
+
+
+<a href='#M000034'>
+new<br/>
+</a>
+
+
+
+
+<a href='#M000068'>
+read_bool<br/>
+</a>
+
+
+
+
+<a href='#M000069'>
+read_byte<br/>
+</a>
+
+
+
+
+<a href='#M000073'>
+read_double<br/>
+</a>
+
+
+
+
+<a href='#M000060'>
+read_field_begin<br/>
+</a>
+
+
+
+
+<a href='#M000061'>
+read_field_end<br/>
+</a>
+
+
+
+
+<a href='#M000070'>
+read_i16<br/>
+</a>
+
+
+
+
+<a href='#M000071'>
+read_i32<br/>
+</a>
+
+
+
+
+<a href='#M000072'>
+read_i64<br/>
+</a>
+
+
+
+
+<a href='#M000064'>
+read_list_begin<br/>
+</a>
+
+
+
+
+<a href='#M000065'>
+read_list_end<br/>
+</a>
+
+
+
+
+<a href='#M000062'>
+read_map_begin<br/>
+</a>
+
+
+
+
+<a href='#M000063'>
+read_map_end<br/>
+</a>
+
+
+
+
+<a href='#M000056'>
+read_message_begin<br/>
+</a>
+
+
+
+
+<a href='#M000057'>
+read_message_end<br/>
+</a>
+
+
+
+
+<a href='#M000066'>
+read_set_begin<br/>
+</a>
+
+
+
+
+<a href='#M000067'>
+read_set_end<br/>
+</a>
+
+
+
+
+<a href='#M000074'>
+read_string<br/>
+</a>
+
+
+
+
+<a href='#M000058'>
+read_struct_begin<br/>
+</a>
+
+
+
+
+<a href='#M000059'>
+read_struct_end<br/>
+</a>
+
+
+
+
+<a href='#M000077'>
+read_type<br/>
+</a>
+
+
+
+
+<a href='#M000078'>
+skip<br/>
+</a>
+
+
+
+
+<a href='#M000049'>
+write_bool<br/>
+</a>
+
+
+
+
+<a href='#M000050'>
+write_byte<br/>
+</a>
+
+
+
+
+<a href='#M000054'>
+write_double<br/>
+</a>
+
+
+
+
+<a href='#M000075'>
+write_field<br/>
+</a>
+
+
+
+
+<a href='#M000040'>
+write_field_begin<br/>
+</a>
+
+
+
+
+<a href='#M000041'>
+write_field_end<br/>
+</a>
+
+
+
+
+<a href='#M000042'>
+write_field_stop<br/>
+</a>
+
+
+
+
+<a href='#M000051'>
+write_i16<br/>
+</a>
+
+
+
+
+<a href='#M000052'>
+write_i32<br/>
+</a>
+
+
+
+
+<a href='#M000053'>
+write_i64<br/>
+</a>
+
+
+
+
+<a href='#M000045'>
+write_list_begin<br/>
+</a>
+
+
+
+
+<a href='#M000046'>
+write_list_end<br/>
+</a>
+
+
+
+
+<a href='#M000043'>
+write_map_begin<br/>
+</a>
+
+
+
+
+<a href='#M000044'>
+write_map_end<br/>
+</a>
+
+
+
+
+<a href='#M000036'>
+write_message_begin<br/>
+</a>
+
+
+
+
+<a href='#M000037'>
+write_message_end<br/>
+</a>
+
+
+
+
+<a href='#M000047'>
+write_set_begin<br/>
+</a>
+
+
+
+
+<a href='#M000048'>
+write_set_end<br/>
+</a>
+
+
+
+
+<a href='#M000055'>
+write_string<br/>
+</a>
+
+
+
+
+<a href='#M000038'>
+write_struct_begin<br/>
+</a>
+
+
+
+
+<a href='#M000039'>
+write_struct_end<br/>
+</a>
+
+
+
+
+<a href='#M000076'>
+write_type<br/>
+</a>
+
+
+</div>
+<div id="spacer"></div><div class="navigation darker index" id="class_wrapper"><div class="list_header"><h3>All classes</h3></div><div class="list_header_link"><a onclick="toggle('class'); toggleText('class_link'); return false;" id="class_link" href="#">Hide...</a></div><div class="clear"></div><div id="class"><form><label for="filter_class">Filter:&nbsp;&nbsp;</label><input type="text" onKeyUp="return filterList('class', this.value, event);" onKeyPress="return disableSubmit(event);" id="filter_class"></input></form></div></div><div class="navigation darker index" id="file_wrapper"><div class="list_header"><h3>All files</h3></div><div class="list_header_link"><a onclick="toggle('file'); toggleText('file_link'); return false;" id="file_link" href="#">Hide...</a></div><div class="clear"></div><div id="file"><form><label for="filter_file">Filter:&nbsp;&nbsp;</label><input type="text" onKeyUp="return filterList('file', this.value, event);" onKeyPress="return disableSubmit(event);" id="filter_file"></input></form></div></div><div class="navigation darker index" id="method_wrapper"><div class="list_header"><h3>All methods</h3></div><div class="list_header_link"><a onclick="toggle('method'); toggleText('method_link'); return false;" id="method_link" href="#">Show...</a></div><div class="clear"></div><div id="method"><form><label for="filter_method">Filter:&nbsp;&nbsp;</label><input type="text" onKeyUp="return filterList('method', this.value, event);" onKeyPress="return disableSubmit(event);" id="filter_method"></input></form></div></div></div><div id="content">
+<h1 id="item_name">Class: Thrift::BaseProtocol</h1>
+
+
+
+
+
+<p></p>
+
+
+
+
+<h1>Attributes</h1><p><table><tr><th>Name</th><th>Read/write?</th></tr>
+<tr>
+<td class="highlight">trans</td>
+
+
+
+
+<td class="normal">R</td>
+</tr>
+</table></p>
+
+
+<h1>Public Class Methods</h1>
+
+
+<a class="small" name="M000034"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000034'>
+
+
+new
+
+(trans)
+
+</a>
+</h3>
+
+<p class="source_link" id="M000034-show-link"><a onclick="toggle('M000034-source'); toggleText('M000034-link'); return false;" id="M000034-link" href="#">Show source...</a></p><div class="source" id="M000034-source"><pre>    <span class="ruby-comment cmt"># File lib/thrift/protocol/base_protocol.rb, line 44</span>
+44:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">initialize</span>(<span class="ruby-identifier">trans</span>)
+45:       <span class="ruby-ivar">@trans</span> = <span class="ruby-identifier">trans</span>
+46:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+
+<h1>Public Instance Methods</h1>
+
+
+<a class="small" name="M000035"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000035'>
+
+
+native?
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000035-show-link"><a onclick="toggle('M000035-source'); toggleText('M000035-link'); return false;" id="M000035-link" href="#">Show source...</a></p><div class="source" id="M000035-source"><pre>    <span class="ruby-comment cmt"># File lib/thrift/protocol/base_protocol.rb, line 48</span>
+48:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">native?</span>
+49:       <span class="ruby-identifier">puts</span> <span class="ruby-value str">&quot;wrong method is being called!&quot;</span>
+50:       <span class="ruby-keyword kw">false</span>
+51:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000068"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000068'>
+
+
+read_bool
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000068-show-link"><a onclick="toggle('M000068-source'); toggleText('M000068-link'); return false;" id="M000068-link" href="#">Show source...</a></p><div class="source" id="M000068-source"><pre>     <span class="ruby-comment cmt"># File lib/thrift/protocol/base_protocol.rb, line 157</span>
+157:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">read_bool</span>
+158:       <span class="ruby-identifier">raise</span> <span class="ruby-constant">NotImplementedError</span>
+159:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000069"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000069'>
+
+
+read_byte
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000069-show-link"><a onclick="toggle('M000069-source'); toggleText('M000069-link'); return false;" id="M000069-link" href="#">Show source...</a></p><div class="source" id="M000069-source"><pre>     <span class="ruby-comment cmt"># File lib/thrift/protocol/base_protocol.rb, line 161</span>
+161:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">read_byte</span>
+162:       <span class="ruby-identifier">raise</span> <span class="ruby-constant">NotImplementedError</span>
+163:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000073"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000073'>
+
+
+read_double
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000073-show-link"><a onclick="toggle('M000073-source'); toggleText('M000073-link'); return false;" id="M000073-link" href="#">Show source...</a></p><div class="source" id="M000073-source"><pre>     <span class="ruby-comment cmt"># File lib/thrift/protocol/base_protocol.rb, line 177</span>
+177:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">read_double</span>
+178:       <span class="ruby-identifier">raise</span> <span class="ruby-constant">NotImplementedError</span>
+179:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000060"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000060'>
+
+
+read_field_begin
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000060-show-link"><a onclick="toggle('M000060-source'); toggleText('M000060-link'); return false;" id="M000060-link" href="#">Show source...</a></p><div class="source" id="M000060-source"><pre>     <span class="ruby-comment cmt"># File lib/thrift/protocol/base_protocol.rb, line 133</span>
+133:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">read_field_begin</span>
+134:       <span class="ruby-identifier">raise</span> <span class="ruby-constant">NotImplementedError</span>
+135:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000061"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000061'>
+
+
+read_field_end
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000061-show-link"><a onclick="toggle('M000061-source'); toggleText('M000061-link'); return false;" id="M000061-link" href="#">Show source...</a></p><div class="source" id="M000061-source"><pre>     <span class="ruby-comment cmt"># File lib/thrift/protocol/base_protocol.rb, line 137</span>
+137:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">read_field_end</span>; <span class="ruby-keyword kw">nil</span>; <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000070"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000070'>
+
+
+read_i16
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000070-show-link"><a onclick="toggle('M000070-source'); toggleText('M000070-link'); return false;" id="M000070-link" href="#">Show source...</a></p><div class="source" id="M000070-source"><pre>     <span class="ruby-comment cmt"># File lib/thrift/protocol/base_protocol.rb, line 165</span>
+165:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">read_i16</span>
+166:       <span class="ruby-identifier">raise</span> <span class="ruby-constant">NotImplementedError</span>
+167:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000071"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000071'>
+
+
+read_i32
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000071-show-link"><a onclick="toggle('M000071-source'); toggleText('M000071-link'); return false;" id="M000071-link" href="#">Show source...</a></p><div class="source" id="M000071-source"><pre>     <span class="ruby-comment cmt"># File lib/thrift/protocol/base_protocol.rb, line 169</span>
+169:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">read_i32</span>
+170:       <span class="ruby-identifier">raise</span> <span class="ruby-constant">NotImplementedError</span>
+171:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000072"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000072'>
+
+
+read_i64
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000072-show-link"><a onclick="toggle('M000072-source'); toggleText('M000072-link'); return false;" id="M000072-link" href="#">Show source...</a></p><div class="source" id="M000072-source"><pre>     <span class="ruby-comment cmt"># File lib/thrift/protocol/base_protocol.rb, line 173</span>
+173:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">read_i64</span>
+174:       <span class="ruby-identifier">raise</span> <span class="ruby-constant">NotImplementedError</span>
+175:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000064"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000064'>
+
+
+read_list_begin
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000064-show-link"><a onclick="toggle('M000064-source'); toggleText('M000064-link'); return false;" id="M000064-link" href="#">Show source...</a></p><div class="source" id="M000064-source"><pre>     <span class="ruby-comment cmt"># File lib/thrift/protocol/base_protocol.rb, line 145</span>
+145:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">read_list_begin</span>
+146:       <span class="ruby-identifier">raise</span> <span class="ruby-constant">NotImplementedError</span>
+147:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000065"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000065'>
+
+
+read_list_end
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000065-show-link"><a onclick="toggle('M000065-source'); toggleText('M000065-link'); return false;" id="M000065-link" href="#">Show source...</a></p><div class="source" id="M000065-source"><pre>     <span class="ruby-comment cmt"># File lib/thrift/protocol/base_protocol.rb, line 149</span>
+149:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">read_list_end</span>; <span class="ruby-keyword kw">nil</span>; <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000062"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000062'>
+
+
+read_map_begin
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000062-show-link"><a onclick="toggle('M000062-source'); toggleText('M000062-link'); return false;" id="M000062-link" href="#">Show source...</a></p><div class="source" id="M000062-source"><pre>     <span class="ruby-comment cmt"># File lib/thrift/protocol/base_protocol.rb, line 139</span>
+139:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">read_map_begin</span>
+140:       <span class="ruby-identifier">raise</span> <span class="ruby-constant">NotImplementedError</span>
+141:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000063"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000063'>
+
+
+read_map_end
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000063-show-link"><a onclick="toggle('M000063-source'); toggleText('M000063-link'); return false;" id="M000063-link" href="#">Show source...</a></p><div class="source" id="M000063-source"><pre>     <span class="ruby-comment cmt"># File lib/thrift/protocol/base_protocol.rb, line 143</span>
+143:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">read_map_end</span>; <span class="ruby-keyword kw">nil</span>; <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000056"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000056'>
+
+
+read_message_begin
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000056-show-link"><a onclick="toggle('M000056-source'); toggleText('M000056-link'); return false;" id="M000056-link" href="#">Show source...</a></p><div class="source" id="M000056-source"><pre>     <span class="ruby-comment cmt"># File lib/thrift/protocol/base_protocol.rb, line 121</span>
+121:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">read_message_begin</span>
+122:       <span class="ruby-identifier">raise</span> <span class="ruby-constant">NotImplementedError</span>
+123:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000057"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000057'>
+
+
+read_message_end
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000057-show-link"><a onclick="toggle('M000057-source'); toggleText('M000057-link'); return false;" id="M000057-link" href="#">Show source...</a></p><div class="source" id="M000057-source"><pre>     <span class="ruby-comment cmt"># File lib/thrift/protocol/base_protocol.rb, line 125</span>
+125:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">read_message_end</span>; <span class="ruby-keyword kw">nil</span>; <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000066"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000066'>
+
+
+read_set_begin
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000066-show-link"><a onclick="toggle('M000066-source'); toggleText('M000066-link'); return false;" id="M000066-link" href="#">Show source...</a></p><div class="source" id="M000066-source"><pre>     <span class="ruby-comment cmt"># File lib/thrift/protocol/base_protocol.rb, line 151</span>
+151:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">read_set_begin</span>
+152:       <span class="ruby-identifier">raise</span> <span class="ruby-constant">NotImplementedError</span>
+153:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000067"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000067'>
+
+
+read_set_end
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000067-show-link"><a onclick="toggle('M000067-source'); toggleText('M000067-link'); return false;" id="M000067-link" href="#">Show source...</a></p><div class="source" id="M000067-source"><pre>     <span class="ruby-comment cmt"># File lib/thrift/protocol/base_protocol.rb, line 155</span>
+155:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">read_set_end</span>; <span class="ruby-keyword kw">nil</span>; <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000074"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000074'>
+
+
+read_string
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000074-show-link"><a onclick="toggle('M000074-source'); toggleText('M000074-link'); return false;" id="M000074-link" href="#">Show source...</a></p><div class="source" id="M000074-source"><pre>     <span class="ruby-comment cmt"># File lib/thrift/protocol/base_protocol.rb, line 181</span>
+181:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">read_string</span>
+182:       <span class="ruby-identifier">raise</span> <span class="ruby-constant">NotImplementedError</span>
+183:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000058"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000058'>
+
+
+read_struct_begin
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000058-show-link"><a onclick="toggle('M000058-source'); toggleText('M000058-link'); return false;" id="M000058-link" href="#">Show source...</a></p><div class="source" id="M000058-source"><pre>     <span class="ruby-comment cmt"># File lib/thrift/protocol/base_protocol.rb, line 127</span>
+127:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">read_struct_begin</span>
+128:       <span class="ruby-identifier">raise</span> <span class="ruby-constant">NotImplementedError</span>
+129:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000059"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000059'>
+
+
+read_struct_end
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000059-show-link"><a onclick="toggle('M000059-source'); toggleText('M000059-link'); return false;" id="M000059-link" href="#">Show source...</a></p><div class="source" id="M000059-source"><pre>     <span class="ruby-comment cmt"># File lib/thrift/protocol/base_protocol.rb, line 131</span>
+131:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">read_struct_end</span>; <span class="ruby-keyword kw">nil</span>; <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000077"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000077'>
+
+
+read_type
+
+(type)
+
+</a>
+</h3>
+
+<p class="source_link" id="M000077-show-link"><a onclick="toggle('M000077-source'); toggleText('M000077-link'); return false;" id="M000077-link" href="#">Show source...</a></p><div class="source" id="M000077-source"><pre>     <span class="ruby-comment cmt"># File lib/thrift/protocol/base_protocol.rb, line 214</span>
+214:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">read_type</span>(<span class="ruby-identifier">type</span>)
+215:       <span class="ruby-keyword kw">case</span> <span class="ruby-identifier">type</span>
+216:       <span class="ruby-keyword kw">when</span> <span class="ruby-constant">Types</span><span class="ruby-operator">::</span><span class="ruby-constant">BOOL</span>
+217:         <span class="ruby-identifier">read_bool</span>
+218:       <span class="ruby-keyword kw">when</span> <span class="ruby-constant">Types</span><span class="ruby-operator">::</span><span class="ruby-constant">BYTE</span>
+219:         <span class="ruby-identifier">read_byte</span>
+220:       <span class="ruby-keyword kw">when</span> <span class="ruby-constant">Types</span><span class="ruby-operator">::</span><span class="ruby-constant">DOUBLE</span>
+221:         <span class="ruby-identifier">read_double</span>
+222:       <span class="ruby-keyword kw">when</span> <span class="ruby-constant">Types</span><span class="ruby-operator">::</span><span class="ruby-constant">I16</span>
+223:         <span class="ruby-identifier">read_i16</span>
+224:       <span class="ruby-keyword kw">when</span> <span class="ruby-constant">Types</span><span class="ruby-operator">::</span><span class="ruby-constant">I32</span>
+225:         <span class="ruby-identifier">read_i32</span>
+226:       <span class="ruby-keyword kw">when</span> <span class="ruby-constant">Types</span><span class="ruby-operator">::</span><span class="ruby-constant">I64</span>
+227:         <span class="ruby-identifier">read_i64</span>
+228:       <span class="ruby-keyword kw">when</span> <span class="ruby-constant">Types</span><span class="ruby-operator">::</span><span class="ruby-constant">STRING</span>
+229:         <span class="ruby-identifier">read_string</span>
+230:       <span class="ruby-keyword kw">else</span>
+231:         <span class="ruby-identifier">raise</span> <span class="ruby-constant">NotImplementedError</span>
+232:       <span class="ruby-keyword kw">end</span>
+233:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000078"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000078'>
+
+
+skip
+
+(type)
+
+</a>
+</h3>
+
+<p class="source_link" id="M000078-show-link"><a onclick="toggle('M000078-source'); toggleText('M000078-link'); return false;" id="M000078-link" href="#">Show source...</a></p><div class="source" id="M000078-source"><pre>     <span class="ruby-comment cmt"># File lib/thrift/protocol/base_protocol.rb, line 235</span>
+235:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">skip</span>(<span class="ruby-identifier">type</span>)
+236:       <span class="ruby-keyword kw">case</span> <span class="ruby-identifier">type</span>
+237:       <span class="ruby-keyword kw">when</span> <span class="ruby-constant">Types</span><span class="ruby-operator">::</span><span class="ruby-constant">STOP</span>
+238:         <span class="ruby-keyword kw">nil</span>
+239:       <span class="ruby-keyword kw">when</span> <span class="ruby-constant">Types</span><span class="ruby-operator">::</span><span class="ruby-constant">BOOL</span>
+240:         <span class="ruby-identifier">read_bool</span>
+241:       <span class="ruby-keyword kw">when</span> <span class="ruby-constant">Types</span><span class="ruby-operator">::</span><span class="ruby-constant">BYTE</span>
+242:         <span class="ruby-identifier">read_byte</span>
+243:       <span class="ruby-keyword kw">when</span> <span class="ruby-constant">Types</span><span class="ruby-operator">::</span><span class="ruby-constant">I16</span>
+244:         <span class="ruby-identifier">read_i16</span>
+245:       <span class="ruby-keyword kw">when</span> <span class="ruby-constant">Types</span><span class="ruby-operator">::</span><span class="ruby-constant">I32</span>
+246:         <span class="ruby-identifier">read_i32</span>
+247:       <span class="ruby-keyword kw">when</span> <span class="ruby-constant">Types</span><span class="ruby-operator">::</span><span class="ruby-constant">I64</span>
+248:         <span class="ruby-identifier">read_i64</span>
+249:       <span class="ruby-keyword kw">when</span> <span class="ruby-constant">Types</span><span class="ruby-operator">::</span><span class="ruby-constant">DOUBLE</span>
+250:         <span class="ruby-identifier">read_double</span>
+251:       <span class="ruby-keyword kw">when</span> <span class="ruby-constant">Types</span><span class="ruby-operator">::</span><span class="ruby-constant">STRING</span>
+252:         <span class="ruby-identifier">read_string</span>
+253:       <span class="ruby-keyword kw">when</span> <span class="ruby-constant">Types</span><span class="ruby-operator">::</span><span class="ruby-constant">STRUCT</span>
+254:         <span class="ruby-identifier">read_struct_begin</span>
+255:         <span class="ruby-keyword kw">while</span> <span class="ruby-keyword kw">true</span>
+256:           <span class="ruby-identifier">name</span>, <span class="ruby-identifier">type</span>, <span class="ruby-identifier">id</span> = <span class="ruby-identifier">read_field_begin</span>
+257:           <span class="ruby-keyword kw">break</span> <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">type</span> <span class="ruby-operator">==</span> <span class="ruby-constant">Types</span><span class="ruby-operator">::</span><span class="ruby-constant">STOP</span>
+258:           <span class="ruby-identifier">skip</span>(<span class="ruby-identifier">type</span>)
+259:           <span class="ruby-identifier">read_field_end</span>
+260:         <span class="ruby-keyword kw">end</span>
+261:         <span class="ruby-identifier">read_struct_end</span>
+262:       <span class="ruby-keyword kw">when</span> <span class="ruby-constant">Types</span><span class="ruby-operator">::</span><span class="ruby-constant">MAP</span>
+263:         <span class="ruby-identifier">ktype</span>, <span class="ruby-identifier">vtype</span>, <span class="ruby-identifier">size</span> = <span class="ruby-identifier">read_map_begin</span>
+264:         <span class="ruby-identifier">size</span>.<span class="ruby-identifier">times</span> <span class="ruby-keyword kw">do</span>
+265:           <span class="ruby-identifier">skip</span>(<span class="ruby-identifier">ktype</span>)
+266:           <span class="ruby-identifier">skip</span>(<span class="ruby-identifier">vtype</span>)
+267:         <span class="ruby-keyword kw">end</span>
+268:         <span class="ruby-identifier">read_map_end</span>
+269:       <span class="ruby-keyword kw">when</span> <span class="ruby-constant">Types</span><span class="ruby-operator">::</span><span class="ruby-constant">SET</span>
+270:         <span class="ruby-identifier">etype</span>, <span class="ruby-identifier">size</span> = <span class="ruby-identifier">read_set_begin</span>
+271:         <span class="ruby-identifier">size</span>.<span class="ruby-identifier">times</span> <span class="ruby-keyword kw">do</span>
+272:           <span class="ruby-identifier">skip</span>(<span class="ruby-identifier">etype</span>)
+273:         <span class="ruby-keyword kw">end</span>
+274:         <span class="ruby-identifier">read_set_end</span>
+275:       <span class="ruby-keyword kw">when</span> <span class="ruby-constant">Types</span><span class="ruby-operator">::</span><span class="ruby-constant">LIST</span>
+276:         <span class="ruby-identifier">etype</span>, <span class="ruby-identifier">size</span> = <span class="ruby-identifier">read_list_begin</span>
+277:         <span class="ruby-identifier">size</span>.<span class="ruby-identifier">times</span> <span class="ruby-keyword kw">do</span>
+278:           <span class="ruby-identifier">skip</span>(<span class="ruby-identifier">etype</span>)
+279:         <span class="ruby-keyword kw">end</span>
+280:         <span class="ruby-identifier">read_list_end</span>
+281:       <span class="ruby-keyword kw">end</span>
+282:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000049"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000049'>
+
+
+write_bool
+
+(bool)
+
+</a>
+</h3>
+
+<p class="source_link" id="M000049-show-link"><a onclick="toggle('M000049-source'); toggleText('M000049-link'); return false;" id="M000049-link" href="#">Show source...</a></p><div class="source" id="M000049-source"><pre>    <span class="ruby-comment cmt"># File lib/thrift/protocol/base_protocol.rb, line 93</span>
+93:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">write_bool</span>(<span class="ruby-identifier">bool</span>)
+94:       <span class="ruby-identifier">raise</span> <span class="ruby-constant">NotImplementedError</span>
+95:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000050"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000050'>
+
+
+write_byte
+
+(byte)
+
+</a>
+</h3>
+
+<p class="source_link" id="M000050-show-link"><a onclick="toggle('M000050-source'); toggleText('M000050-link'); return false;" id="M000050-link" href="#">Show source...</a></p><div class="source" id="M000050-source"><pre>    <span class="ruby-comment cmt"># File lib/thrift/protocol/base_protocol.rb, line 97</span>
+97:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">write_byte</span>(<span class="ruby-identifier">byte</span>)
+98:       <span class="ruby-identifier">raise</span> <span class="ruby-constant">NotImplementedError</span>
+99:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000054"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000054'>
+
+
+write_double
+
+(dub)
+
+</a>
+</h3>
+
+<p class="source_link" id="M000054-show-link"><a onclick="toggle('M000054-source'); toggleText('M000054-link'); return false;" id="M000054-link" href="#">Show source...</a></p><div class="source" id="M000054-source"><pre>     <span class="ruby-comment cmt"># File lib/thrift/protocol/base_protocol.rb, line 113</span>
+113:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">write_double</span>(<span class="ruby-identifier">dub</span>)
+114:       <span class="ruby-identifier">raise</span> <span class="ruby-constant">NotImplementedError</span>
+115:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000075"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000075'>
+
+
+write_field
+
+(name, type, fid, value)
+
+</a>
+</h3>
+
+<p class="source_link" id="M000075-show-link"><a onclick="toggle('M000075-source'); toggleText('M000075-link'); return false;" id="M000075-link" href="#">Show source...</a></p><div class="source" id="M000075-source"><pre>     <span class="ruby-comment cmt"># File lib/thrift/protocol/base_protocol.rb, line 185</span>
+185:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">write_field</span>(<span class="ruby-identifier">name</span>, <span class="ruby-identifier">type</span>, <span class="ruby-identifier">fid</span>, <span class="ruby-identifier">value</span>)
+186:       <span class="ruby-identifier">write_field_begin</span>(<span class="ruby-identifier">name</span>, <span class="ruby-identifier">type</span>, <span class="ruby-identifier">fid</span>)
+187:       <span class="ruby-identifier">write_type</span>(<span class="ruby-identifier">type</span>, <span class="ruby-identifier">value</span>)
+188:       <span class="ruby-identifier">write_field_end</span>
+189:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000040"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000040'>
+
+
+write_field_begin
+
+(name, type, id)
+
+</a>
+</h3>
+
+<p class="source_link" id="M000040-show-link"><a onclick="toggle('M000040-source'); toggleText('M000040-link'); return false;" id="M000040-link" href="#">Show source...</a></p><div class="source" id="M000040-source"><pre>    <span class="ruby-comment cmt"># File lib/thrift/protocol/base_protocol.rb, line 65</span>
+65:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">write_field_begin</span>(<span class="ruby-identifier">name</span>, <span class="ruby-identifier">type</span>, <span class="ruby-identifier">id</span>)
+66:       <span class="ruby-identifier">raise</span> <span class="ruby-constant">NotImplementedError</span>
+67:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000041"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000041'>
+
+
+write_field_end
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000041-show-link"><a onclick="toggle('M000041-source'); toggleText('M000041-link'); return false;" id="M000041-link" href="#">Show source...</a></p><div class="source" id="M000041-source"><pre>    <span class="ruby-comment cmt"># File lib/thrift/protocol/base_protocol.rb, line 69</span>
+69:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">write_field_end</span>; <span class="ruby-keyword kw">nil</span>; <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000042"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000042'>
+
+
+write_field_stop
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000042-show-link"><a onclick="toggle('M000042-source'); toggleText('M000042-link'); return false;" id="M000042-link" href="#">Show source...</a></p><div class="source" id="M000042-source"><pre>    <span class="ruby-comment cmt"># File lib/thrift/protocol/base_protocol.rb, line 71</span>
+71:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">write_field_stop</span>
+72:       <span class="ruby-identifier">raise</span> <span class="ruby-constant">NotImplementedError</span>
+73:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000051"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000051'>
+
+
+write_i16
+
+(i16)
+
+</a>
+</h3>
+
+<p class="source_link" id="M000051-show-link"><a onclick="toggle('M000051-source'); toggleText('M000051-link'); return false;" id="M000051-link" href="#">Show source...</a></p><div class="source" id="M000051-source"><pre>     <span class="ruby-comment cmt"># File lib/thrift/protocol/base_protocol.rb, line 101</span>
+101:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">write_i16</span>(<span class="ruby-identifier">i16</span>)
+102:       <span class="ruby-identifier">raise</span> <span class="ruby-constant">NotImplementedError</span>
+103:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000052"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000052'>
+
+
+write_i32
+
+(i32)
+
+</a>
+</h3>
+
+<p class="source_link" id="M000052-show-link"><a onclick="toggle('M000052-source'); toggleText('M000052-link'); return false;" id="M000052-link" href="#">Show source...</a></p><div class="source" id="M000052-source"><pre>     <span class="ruby-comment cmt"># File lib/thrift/protocol/base_protocol.rb, line 105</span>
+105:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">write_i32</span>(<span class="ruby-identifier">i32</span>)
+106:       <span class="ruby-identifier">raise</span> <span class="ruby-constant">NotImplementedError</span>
+107:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000053"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000053'>
+
+
+write_i64
+
+(i64)
+
+</a>
+</h3>
+
+<p class="source_link" id="M000053-show-link"><a onclick="toggle('M000053-source'); toggleText('M000053-link'); return false;" id="M000053-link" href="#">Show source...</a></p><div class="source" id="M000053-source"><pre>     <span class="ruby-comment cmt"># File lib/thrift/protocol/base_protocol.rb, line 109</span>
+109:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">write_i64</span>(<span class="ruby-identifier">i64</span>)
+110:       <span class="ruby-identifier">raise</span> <span class="ruby-constant">NotImplementedError</span>
+111:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000045"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000045'>
+
+
+write_list_begin
+
+(etype, size)
+
+</a>
+</h3>
+
+<p class="source_link" id="M000045-show-link"><a onclick="toggle('M000045-source'); toggleText('M000045-link'); return false;" id="M000045-link" href="#">Show source...</a></p><div class="source" id="M000045-source"><pre>    <span class="ruby-comment cmt"># File lib/thrift/protocol/base_protocol.rb, line 81</span>
+81:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">write_list_begin</span>(<span class="ruby-identifier">etype</span>, <span class="ruby-identifier">size</span>)
+82:       <span class="ruby-identifier">raise</span> <span class="ruby-constant">NotImplementedError</span>
+83:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000046"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000046'>
+
+
+write_list_end
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000046-show-link"><a onclick="toggle('M000046-source'); toggleText('M000046-link'); return false;" id="M000046-link" href="#">Show source...</a></p><div class="source" id="M000046-source"><pre>    <span class="ruby-comment cmt"># File lib/thrift/protocol/base_protocol.rb, line 85</span>
+85:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">write_list_end</span>; <span class="ruby-keyword kw">nil</span>; <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000043"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000043'>
+
+
+write_map_begin
+
+(ktype, vtype, size)
+
+</a>
+</h3>
+
+<p class="source_link" id="M000043-show-link"><a onclick="toggle('M000043-source'); toggleText('M000043-link'); return false;" id="M000043-link" href="#">Show source...</a></p><div class="source" id="M000043-source"><pre>    <span class="ruby-comment cmt"># File lib/thrift/protocol/base_protocol.rb, line 75</span>
+75:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">write_map_begin</span>(<span class="ruby-identifier">ktype</span>, <span class="ruby-identifier">vtype</span>, <span class="ruby-identifier">size</span>)
+76:       <span class="ruby-identifier">raise</span> <span class="ruby-constant">NotImplementedError</span>
+77:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000044"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000044'>
+
+
+write_map_end
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000044-show-link"><a onclick="toggle('M000044-source'); toggleText('M000044-link'); return false;" id="M000044-link" href="#">Show source...</a></p><div class="source" id="M000044-source"><pre>    <span class="ruby-comment cmt"># File lib/thrift/protocol/base_protocol.rb, line 79</span>
+79:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">write_map_end</span>; <span class="ruby-keyword kw">nil</span>; <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000036"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000036'>
+
+
+write_message_begin
+
+(name, type, seqid)
+
+</a>
+</h3>
+
+<p class="source_link" id="M000036-show-link"><a onclick="toggle('M000036-source'); toggleText('M000036-link'); return false;" id="M000036-link" href="#">Show source...</a></p><div class="source" id="M000036-source"><pre>    <span class="ruby-comment cmt"># File lib/thrift/protocol/base_protocol.rb, line 53</span>
+53:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">write_message_begin</span>(<span class="ruby-identifier">name</span>, <span class="ruby-identifier">type</span>, <span class="ruby-identifier">seqid</span>)
+54:       <span class="ruby-identifier">raise</span> <span class="ruby-constant">NotImplementedError</span>
+55:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000037"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000037'>
+
+
+write_message_end
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000037-show-link"><a onclick="toggle('M000037-source'); toggleText('M000037-link'); return false;" id="M000037-link" href="#">Show source...</a></p><div class="source" id="M000037-source"><pre>    <span class="ruby-comment cmt"># File lib/thrift/protocol/base_protocol.rb, line 57</span>
+57:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">write_message_end</span>; <span class="ruby-keyword kw">nil</span>; <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000047"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000047'>
+
+
+write_set_begin
+
+(etype, size)
+
+</a>
+</h3>
+
+<p class="source_link" id="M000047-show-link"><a onclick="toggle('M000047-source'); toggleText('M000047-link'); return false;" id="M000047-link" href="#">Show source...</a></p><div class="source" id="M000047-source"><pre>    <span class="ruby-comment cmt"># File lib/thrift/protocol/base_protocol.rb, line 87</span>
+87:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">write_set_begin</span>(<span class="ruby-identifier">etype</span>, <span class="ruby-identifier">size</span>)
+88:       <span class="ruby-identifier">raise</span> <span class="ruby-constant">NotImplementedError</span>
+89:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000048"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000048'>
+
+
+write_set_end
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000048-show-link"><a onclick="toggle('M000048-source'); toggleText('M000048-link'); return false;" id="M000048-link" href="#">Show source...</a></p><div class="source" id="M000048-source"><pre>    <span class="ruby-comment cmt"># File lib/thrift/protocol/base_protocol.rb, line 91</span>
+91:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">write_set_end</span>; <span class="ruby-keyword kw">nil</span>; <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000055"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000055'>
+
+
+write_string
+
+(str)
+
+</a>
+</h3>
+
+<p class="source_link" id="M000055-show-link"><a onclick="toggle('M000055-source'); toggleText('M000055-link'); return false;" id="M000055-link" href="#">Show source...</a></p><div class="source" id="M000055-source"><pre>     <span class="ruby-comment cmt"># File lib/thrift/protocol/base_protocol.rb, line 117</span>
+117:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">write_string</span>(<span class="ruby-identifier">str</span>)
+118:       <span class="ruby-identifier">raise</span> <span class="ruby-constant">NotImplementedError</span>
+119:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000038"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000038'>
+
+
+write_struct_begin
+
+(name)
+
+</a>
+</h3>
+
+<p class="source_link" id="M000038-show-link"><a onclick="toggle('M000038-source'); toggleText('M000038-link'); return false;" id="M000038-link" href="#">Show source...</a></p><div class="source" id="M000038-source"><pre>    <span class="ruby-comment cmt"># File lib/thrift/protocol/base_protocol.rb, line 59</span>
+59:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">write_struct_begin</span>(<span class="ruby-identifier">name</span>)
+60:       <span class="ruby-identifier">raise</span> <span class="ruby-constant">NotImplementedError</span>
+61:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000039"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000039'>
+
+
+write_struct_end
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000039-show-link"><a onclick="toggle('M000039-source'); toggleText('M000039-link'); return false;" id="M000039-link" href="#">Show source...</a></p><div class="source" id="M000039-source"><pre>    <span class="ruby-comment cmt"># File lib/thrift/protocol/base_protocol.rb, line 63</span>
+63:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">write_struct_end</span>; <span class="ruby-keyword kw">nil</span>; <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000076"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000076'>
+
+
+write_type
+
+(type, value)
+
+</a>
+</h3>
+
+<p class="source_link" id="M000076-show-link"><a onclick="toggle('M000076-source'); toggleText('M000076-link'); return false;" id="M000076-link" href="#">Show source...</a></p><div class="source" id="M000076-source"><pre>     <span class="ruby-comment cmt"># File lib/thrift/protocol/base_protocol.rb, line 191</span>
+191:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">write_type</span>(<span class="ruby-identifier">type</span>, <span class="ruby-identifier">value</span>)
+192:       <span class="ruby-keyword kw">case</span> <span class="ruby-identifier">type</span>
+193:       <span class="ruby-keyword kw">when</span> <span class="ruby-constant">Types</span><span class="ruby-operator">::</span><span class="ruby-constant">BOOL</span>
+194:         <span class="ruby-identifier">write_bool</span>(<span class="ruby-identifier">value</span>)
+195:       <span class="ruby-keyword kw">when</span> <span class="ruby-constant">Types</span><span class="ruby-operator">::</span><span class="ruby-constant">BYTE</span>
+196:         <span class="ruby-identifier">write_byte</span>(<span class="ruby-identifier">value</span>)
+197:       <span class="ruby-keyword kw">when</span> <span class="ruby-constant">Types</span><span class="ruby-operator">::</span><span class="ruby-constant">DOUBLE</span>
+198:         <span class="ruby-identifier">write_double</span>(<span class="ruby-identifier">value</span>)
+199:       <span class="ruby-keyword kw">when</span> <span class="ruby-constant">Types</span><span class="ruby-operator">::</span><span class="ruby-constant">I16</span>
+200:         <span class="ruby-identifier">write_i16</span>(<span class="ruby-identifier">value</span>)
+201:       <span class="ruby-keyword kw">when</span> <span class="ruby-constant">Types</span><span class="ruby-operator">::</span><span class="ruby-constant">I32</span>
+202:         <span class="ruby-identifier">write_i32</span>(<span class="ruby-identifier">value</span>)
+203:       <span class="ruby-keyword kw">when</span> <span class="ruby-constant">Types</span><span class="ruby-operator">::</span><span class="ruby-constant">I64</span>
+204:         <span class="ruby-identifier">write_i64</span>(<span class="ruby-identifier">value</span>)
+205:       <span class="ruby-keyword kw">when</span> <span class="ruby-constant">Types</span><span class="ruby-operator">::</span><span class="ruby-constant">STRING</span>
+206:         <span class="ruby-identifier">write_string</span>(<span class="ruby-identifier">value</span>)
+207:       <span class="ruby-keyword kw">when</span> <span class="ruby-constant">Types</span><span class="ruby-operator">::</span><span class="ruby-constant">STRUCT</span>
+208:         <span class="ruby-identifier">value</span>.<span class="ruby-identifier">write</span>(<span class="ruby-keyword kw">self</span>)
+209:       <span class="ruby-keyword kw">else</span>
+210:         <span class="ruby-identifier">raise</span> <span class="ruby-constant">NotImplementedError</span>
+211:       <span class="ruby-keyword kw">end</span>
+212:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+
+
+
+
+</div><div class="clear" id="footer">Generated on Feb 5, 2010 / Allison 2 &copy; 2007 <a href="http://cloudbur.st">Cloudburst, LLC</a></div></div></body></html>

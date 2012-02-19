@@ -1,0 +1,1300 @@
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head><meta content="text/html; charset=utf-8" http-equiv="Content-Type"/><title>Class: Echoe</title><link type="text/css" href=".././rdoc-style.css" media="screen" rel="stylesheet"/><script type="text/javascript">
+// Allison template
+// Copyright 2007, 2008 Cloudburst, LLC. Licensed under the AFL 3. See the included LICENSE file.
+
+var href_base = '.././rdoc-style.css'.replace(/(.*\/).*/, '$1'); // inline js is good for something  
+
+function $(id) {
+    if (document.getElementById)
+      elem = document.getElementById(id);
+    else if ( document.all )
+      elem = eval("document.all." + id);
+    else
+      return false;
+    return elem;
+}
+
+  function toggle(id) {
+    elem = $(id);
+    elemStyle = elem.style;   
+    if (elemStyle.display == "block") {
+      elemStyle.display = "none"
+    } else {
+      elemStyle.display = "block"
+    }
+    return true;
+  }
+
+  function toggleText(id) {
+    elem = $(id)
+    if (m = elem.innerHTML.match(/(Hide)(.*)/)) {
+      elem.innerHTML = "Show" + m[2];
+    } else if (m = elem.innerHTML.match(/(Show)(.*)/)) {
+      elem.innerHTML = "Hide" + m[2];
+    }
+    return true;
+  }
+
+function span(s, klass) {
+  return '<span class="' + klass + '">' + s + '</span>';
+}
+  
+function highlightSymbols() {
+  pres = document.getElementsByTagName('pre');
+  for(var i = 0; i < pres.length; i++) {
+    pre = pres[i];
+    spans = pre.getElementsByTagName('span');
+    for(var k = 0; k < spans.length; k++) {
+      span = spans[k];
+      if (span.className.match(/ruby-identifier/)) {
+        if (span.innerHTML.match(/^:/)) {
+          span.className += " ruby-symbol";
+        }
+      }
+    }
+  }
+}
+
+ function hasClass(obj) {
+     var result = false;
+     if (obj.getAttributeNode("class") != null) {
+         result = obj.getAttributeNode("class").value;
+     }
+     return result;
+  }   
+
+ function stripe() {
+    var even = true;
+    var color = "#e4ebed";
+    var tables = document.getElementsByTagName('table');
+    if (tables.length == 0) { return; }
+    for (var h = 0; h < tables.length; h++) {
+        var trs = tables[h].getElementsByTagName("tr");
+        for (var i = 0; i < trs.length; i++) {
+          var tds = trs[i].getElementsByTagName("td");
+            for (var j = 0; j < tds.length; j++) {       
+              if (hasClass(tds[j]) != "first") {                
+              var mytd = tds[j];
+              if (even) {
+                mytd.style.backgroundColor = color;
+              }         
+            }
+          }
+          even =  ! even;
+      }
+    }
+  }
+  
+function ajaxGet(url) {
+  url = (href_base + url).replace('/./', '/')
+  var req = false;
+
+  if (window.ActiveXObject) {
+    try {
+      // stupid hack because IE7 disables local Ajax with the native xmlhttprequest object
+      // for security purposes. Yet ActiveX still works. Thanks, Microsoft. I hate you. Die.
+      req = new ActiveXObject("MSXML2.XMLHTTP.3.0");
+    } catch (e) {
+      try {
+        /* IE 6 and maybe 5, don't know, don't care */
+        req = new ActiveXObject("Msxml2.XMLHTTP");
+      } catch (e) {
+        try {
+          req = new ActiveXObject("Microsoft.XMLHTTP");
+        } catch (e) {
+          req = false;
+        }
+      }
+    }
+  }
+    
+  /* real browsers */
+  if (!req && window.XMLHttpRequest) {
+    try {
+      req = new XMLHttpRequest();
+    } catch (e) {
+      req = false;
+    }
+  } 
+  
+  if (req) {
+    req.open('GET', url, false);
+    req.send(null);
+    return req.responseText;
+  } else {
+    return "Ajax error";  
+  }
+}
+
+
+function addEvent(elm, evType, fn, useCapture) {
+	if (elm.addEventListener) {
+	  elm.addEventListener(evType, fn, useCapture);  
+  	return true;
+	} else if (elm.attachEvent) {
+  	var r = elm.attachEvent('on' + evType, fn);  
+	  return r;  
+	} else {
+  	elm['on' + evType] = fn;
+	}
+}
+
+function insertIndices() {
+  pages = ["class", "file", "method"]
+  for (x in pages) { 
+    $(pages[x]).innerHTML += ajaxGet('fr_' + pages[x] + '_index.html').replace(/(href=")/g, '$1' + href_base);
+  }
+  /* mouseoverify method links */
+  links = $('method').getElementsByTagName('a');
+  for (var x = 0; x < links.length; x++) {
+    if (m = links[x].innerHTML.match(/(.*)\s\((.*)\)/)) {
+      links[x].innerHTML = m[1] + '<br>';
+      links[x].title = m[2];
+    }
+  }
+  /* this is stupid */
+  $('class').style.display = "block";
+  $('file').style.display = "block";
+  
+  /* has to be here because IE7 does not guarantee the onLoad callback order */
+  abbreviateIndicesInner(["class", "file"], 25, "a");
+  /* same, linkTitle() depends on the class link list */
+  linkTitle();
+}
+
+function abbreviateIndices() {
+  var ids = ["defined_in", "child_of", "includes", "requires", "method", "methods"];
+  abbreviateIndicesInner(ids, 25, 'a');
+  abbreviateIndicesInner(ids, 25, 'span');
+}
+
+function abbreviateIndicesInner(indices, amount, tag) {
+  for (var x = 0; x < indices.length; x++) { 
+    var the_index = $(indices[x]);
+    if (the_index) {
+      links = the_index.getElementsByTagName(tag);
+      for (var y = 0; y < links.length; y++) {
+        var link = links[y];
+        if (link.getElementsByTagName('span').length == 0 && link.getElementsByTagName('a').length == 0) {
+          // avoid nesting
+          link.innerHTML = link.innerHTML.replace(/<br>|\n/gi, '');
+          link.title = link.innerHTML;
+          link.innerHTML = abbreviate(link.innerHTML, amount) + '<br>';
+        }
+      }
+    }
+  }
+}
+
+function linkTitle() {
+  
+  /* grab the correct title element from the index */
+  var index_page = ajaxGet('index.html');
+  title_text = index_page.match(/<title>(.*)<\/title>/m)[1];
+  document.title = title_text + " - " + document.title;
+  var p = $('header').getElementsByTagName('p')[0]
+  if (p.innerHTML.match(/^\s*$/)) {
+    p.innerHTML = title_text;
+  } else {
+    p.innerHTML = title_text + ": " + p.innerHTML;
+  }
+  
+  /* set the link properly */
+  title_link = index_page.match(/<a\s+href="(.*?)"/)[1];
+  var element = $('title');
+  var item_type = "";
+  var item_name = "";
+  if (m = element.innerHTML.match(/(Class:|Module:|File:)\s*(.*)/)) {
+    item_type = m[1];
+    item_name = m[2];
+  } else {
+    item_name = element.innerHTML;
+  }
+  element.innerHTML = '<a href="' + href_base + title_link + '">' + item_type + " " + abbreviate(item_name, 45) + '</a>';
+  element.getElementsByTagName('a')[0].title = item_name
+  
+  /* breadcrumb navigation */
+  items = item_name.split("::");
+  items_new = item_name.split("::");
+  file_links = $('class').getElementsByTagName('a');
+  for (var x = 0; x < items.length - 1; x++ ){
+    var item = items[x];
+    link = ("/classes/" + items.slice(0,x).join("/") + "/" + item + ".html").replace('//', '/');
+    regex = new RegExp(RegExp.escape(link) + '$');
+    for (var y = 0; y < file_links.length; y++) {
+      if (file_links[y].href.match(regex)) {
+         items_new[x] = '<a href="' + href_base + link + '">' + item + '</a>';
+         break;
+      }
+    }  
+  }
+  $('item_name').innerHTML = item_type + ' ' + items_new.join(" :: ");
+}
+
+function abbreviate(s, size) {
+  while (s.length > size) {
+    var old_s = s;
+    s = s.replace(/\s|\n/mg, '');
+    s = s.replace(/([A-Z])[a-z]+/m, '$1');
+    if (!s || old_s == s) {
+      return "..." + s.substring(s.length - size, s.length);
+    }
+  }
+  return s;
+}
+
+function disableSubmit(event) {
+  var keyCode = event.keyCode ? event.keyCode : event.which ? event.which : event.charCode;
+  if (keyCode == 13) {
+    return false;
+  } else {
+    return true;
+  }
+}
+  
+function filterList(id, s, event) {
+  
+  /* some weak escaping */
+  s = s.replace(/[^\w\d\.\_\-\/\:\=\[\]\?\!]/g, '');
+  s = RegExp.escape(s);
+  
+  var show_all = false;
+  if (s.match(/^\s*$/)) {
+    show_all = true;
+  }
+  
+  links = $(id).getElementsByTagName('a')
+  regex = new RegExp(s, 'i');
+  
+  for (var x = 0; x < links.length; x++) {
+    var link = links[x];
+    if (show_all) {
+      link.style.display = 'inline';
+    } else {
+       if (link.innerHTML.match(regex)) {        
+         link.style.display = 'inline';
+       } else {
+         link.style.display = 'none';
+       }
+    }
+  }
+  return true;
+}
+
+RegExp.escape = function(text) {
+  if (!arguments.callee.sRE) {
+    var specials = ['/', '.', '*', '+', '?', '|', '(', ')', '[', ']', '{', '}', '\\'];
+    arguments.callee.sRE = new RegExp(
+      '(\\' + specials.join('|\\') + ')', 'g'
+    );
+  }
+  return text.replace(arguments.callee.sRE, '\\$1');
+}
+
+function hacks() {
+  // show the spacer if necessary, 
+  divs = document.getElementsByTagName('div');
+  for(var x = 0; x < divs.length; x++) {
+    if (divs[x].className && divs[x].className.match(/top/)) {
+      document.getElementById('spacer').style.display = 'block';
+    }
+  }
+  // remove extra colons from tables
+  tds = document.getElementsByTagName('td');
+  for(var x = 0; x < tds.length; x++) {
+    str = tds[x].innerHTML
+    if (str.charAt(str.length - 1) == ":") {
+      tds[x].innerHTML = str.slice(0, str.length - 1)
+    }
+  }
+}
+
+addEvent(window, 'load', insertIndices, false);
+addEvent(window, 'load', abbreviateIndices, false);
+addEvent(window, 'load', stripe, false);
+addEvent(window, 'load', highlightSymbols, false);
+addEvent(window, 'load', hacks, false);
+</script></head><body><div id="container"><div class="curve" id="preheader_curve_0"></div><div class="curve" id="preheader_curve_1"></div><div class="curve" id="preheader_curve_2"></div><div class="curve" id="preheader_curve_3"></div><div class="curve" id="preheader_curve_4"></div><div class="curve" id="preheader_curve_5"></div><div id="header"><p>
+</p><span><h1 id="title">
+Class: Echoe
+</h1></span>
+</div><div class="clear"></div><div id="left">
+<div class="navigation darker top" id="child_of"><h3>Child of</h3><span>
+
+Object
+</span></div>
+
+<div class="navigation darker top" id="defined_in"><h3>Defined in</h3>
+
+<a href="../files/lib/echoe_rb.html">lib/echoe.rb</a>
+
+
+<a href="../files/lib/echoe/extensions_rb.html">lib/echoe/extensions.rb</a>
+
+</div>
+
+
+
+<div class="navigation top" id="methods"><h3>Methods</h3>
+
+
+<a href='#M000001'>
+new<br/>
+</a>
+
+
+
+
+<a href='#M000002'>
+silence<br/>
+</a>
+
+
+</div>
+<div id="spacer"></div><div class="navigation darker index" id="class_wrapper"><div class="list_header"><h3>All classes</h3></div><div class="list_header_link"><a onclick="toggle('class'); toggleText('class_link'); return false;" href="#" id="class_link">Hide...</a></div><div class="clear"></div><div id="class"><form><label for="filter_class">Filter:&nbsp;&nbsp;</label><input type="text" onKeyUp="return filterList('class', this.value, event);" onKeyPress="return disableSubmit(event);" id="filter_class"></input></form></div></div><div class="navigation darker index" id="file_wrapper"><div class="list_header"><h3>All files</h3></div><div class="list_header_link"><a onclick="toggle('file'); toggleText('file_link'); return false;" href="#" id="file_link">Hide...</a></div><div class="clear"></div><div id="file"><form><label for="filter_file">Filter:&nbsp;&nbsp;</label><input type="text" onKeyUp="return filterList('file', this.value, event);" onKeyPress="return disableSubmit(event);" id="filter_file"></input></form></div></div><div class="navigation darker index" id="method_wrapper"><div class="list_header"><h3>All methods</h3></div><div class="list_header_link"><a onclick="toggle('method'); toggleText('method_link'); return false;" href="#" id="method_link">Show...</a></div><div class="clear"></div><div id="method"><form><label for="filter_method">Filter:&nbsp;&nbsp;</label><input type="text" onKeyUp="return filterList('method', this.value, event);" onKeyPress="return disableSubmit(event);" id="filter_method"></input></form></div></div></div><div id="content">
+<h1 id="item_name">Class: Echoe</h1>
+
+<div id="description"><p>
+<a href="Echoe.html">Echoe</a> includes some optional accessors for more
+advanced gem configuration.
+</p>
+<p>
+For example, a simple <tt>Rakefile</tt> might look like this:
+</p>
+<pre>
+  require 'echoe'
+
+  Echoe.new(&quot;uncapitalizer&quot;) do |p|
+    p.author = &quot;Evan Weaver&quot;
+    p.summary = &quot;A library that uncapitalizes strings.&quot;
+    p.runtime_dependencies = [&quot;string_tools &gt;=1.4.0&quot;]
+  end
+</pre>
+<p>
+See below for the full list.
+</p>
+<h2>Signing gems</h2>
+<p>
+<a href="Echoe.html">Echoe</a> supports signing gems. First, create
+yourself a public and private key:
+</p>
+<pre>
+  gem cert --build you@yourmail.com
+</pre>
+<p>
+Move them somewhere secret, and add the following environment variables in
+your <tt>.bash_profile</tt> or similar:
+</p>
+<pre>
+  export GEM_PRIVATE_KEY='/secret/path/to/gem-private_key.pem'
+  export GEM_CERTIFICATE_CHAIN='/secret/path/to/gem-public_cert.pem'
+</pre>
+<p>
+Make sure your environment is up-to-date:
+</p>
+<pre>
+  source ~/.bash_profile
+</pre>
+<p>
+Upload your <tt>public_cert.pem</tt> file to your website or Rubyforge
+project, and tell your users to add that certificate to their system via:
+</p>
+<pre>
+  gem cert --add /path/to/public_cert.pem
+</pre>
+<p>
+Finally, package and release your project as normal. Now users can install
+your gem via:
+</p>
+<pre>
+  sudo gem install gemname -P HighSecurity
+</pre>
+<p>
+Note that you can also set the key and certificate locations in the
+Rakefile itself. Finally, you can add <tt>p.require_signed = true</tt> to
+your <tt>Rakefile</tt> so that you don&#8216;t accidentally release an
+unsigned gem if your key is missing.
+</p>
+<h2>Metadependencies</h2>
+<p>
+<a href="Echoe.html">Echoe</a> does not force packages to depend on <a
+href="Echoe.html">Echoe</a> itself. Instead, it generates a
+<tt>gemspec</tt> from your <tt>Rakefile</tt> and includes that. Downstream
+repackagers can use the <tt>gemspec</tt> as-is to build <a
+href="Echoe.html#M000001">new</a> versions of your gem even without <a
+href="Echoe.html">Echoe</a>.
+</p>
+<h2>Cross-packaging</h2>
+<p>
+<a href="Echoe.html">Echoe</a> supports platform <a
+href="Rake.html">Rake</a> targets to allow you to cross-package your gems.
+Just write the spec assuming <tt>RUBY_PLATFORM</tt> will be what you need
+it to be for each architecture, and then invoke <a
+href="Rake.html">Rake</a> with the platform name when you&#8216;re
+cross-packaging.
+</p>
+<p>
+For example, on JRuby, <tt>rake package</tt> will build a generic
+<tt>-ruby</tt> type gem. But if you want to include a Java-specific
+extension, you can do one of two things. You can package from within JRuby
+by checking if <tt>RUBY_PLATFORM =~ /java/</tt> and setting <tt>p.platform
+= jruby</tt>, or you can run <tt>rake java package</tt>, which will set
+<tt>RUBY_PLATFORM</tt> and <tt>p.platform</tt> for you.
+</p>
+<p>
+This way you can run <tt>rake java package</tt>, <tt>rake aix install</tt>,
+or whatever task you need and <a href="Echoe.html">Echoe</a> will behave
+just like you&#8216;re packaging from within the target platform.
+</p>
+<h2>Test environment setup and teardown</h2>
+<p>
+For some applications, you may need to setup and teardown environment state
+for the entire test suite. This is especially common for integration tests
+that may need to spawn an external daemon. To support this, you can add a
+file <tt>tests/setup.rb</tt> and it will be silently executed before the
+entire suite runs. Add a similar file <tt>tests/teardown.rb</tt> in your
+app to be executed at the end of the entire run.
+</p>
+<p>
+Note; these files will only get executed if you run the tests via
+<tt>rake</tt>. Also, you can set the environment variable
+<tt>VERBOSE=1</tt> to not hide the setup/teardown output.
+</p>
+<h2>Accessor options</h2>
+<p>
+Descriptive options:
+</p>
+<ul>
+<li><tt>author</tt> - Your name.
+
+</li>
+<li><tt>email</tt> - Your email address.
+
+</li>
+<li><tt>description</tt> - A more detailed description of the library.
+
+</li>
+<li><tt>summary</tt> - A shorter description of the library.
+
+</li>
+<li><tt>url</tt> - A url for the library. Defaults to generated RDoc on GitHub
+pages for the project.f
+
+</li>
+<li><tt>install_message</tt> - A message to display after the gem is installed.
+
+</li>
+</ul>
+<p>
+Versioning options:
+</p>
+<ul>
+<li><tt>version</tt> - A string for the version number. Parsed from CHANGELOG
+otherwise.
+
+</li>
+<li><tt>changes</tt> - A string describing the most recent changes. Parsed from
+CHANGELOG otherwise.
+
+</li>
+</ul>
+<p>
+Common packaging options:
+</p>
+<ul>
+<li><tt>runtime_dependencies</tt> - An array of runtime dependencies for this
+gem. For example, <tt>[&#8216;mongrel&#8217;, &#8216;activesupport &gt;=
+2.0.2&#8217;]</tt>.
+
+</li>
+<li><tt>development_dependencies</tt> - An array of development dependencies
+for this gem. For example, <tt>[&#8216;rake &gt;=0.7.1&#8217;]</tt>.
+
+</li>
+<li><tt>extension_pattern</tt> - A filename array, glob array, or regex for
+extension files that need to be run at install time. Defaults to
+<tt>&quot;ext/**/extconf.rb&quot;</tt>.
+
+</li>
+</ul>
+<p>
+Testing options:
+</p>
+<ul>
+<li><tt>clean_pattern</tt> - A filename array, glob array, or regex for files
+that should be removed when <tt>rake clean</tt> is run.
+
+</li>
+<li><tt>test_pattern</tt> - A filename array, glob array, or regex for test
+runners. Overridden by <tt>&quot;test/test_all.rb&quot;</tt>, if it exists.
+
+</li>
+<li><tt>spec_pattern</tt> - A filename array, glob array, or regex for test
+runners.
+
+</li>
+<li><tt>rcov_options</tt> - Any extra flags to pass to RCov when coverage
+reports are run.
+
+</li>
+</ul>
+<p>
+Uncommon packaging options:
+</p>
+<ul>
+<li><tt>platform</tt> - What platform this gem is for.
+
+</li>
+<li><tt>manifest_name</tt> - The name of the manifest file. Defaults to
+<tt>Manifest</tt>.
+
+</li>
+<li><tt>need_gem</tt> - Whether to generate a gem package. Defaults to
+<tt>true</tt>.
+
+</li>
+<li><tt>need_tar_gz</tt> - Whether to generate a <tt>.tar.gz</tt> package.
+Defaults to <tt>true</tt>.
+
+</li>
+<li><tt>need_tgz</tt> - Whether to generate a <tt>.tgz</tt> package. Defaults
+to <tt>false</tt>.
+
+</li>
+<li><tt>need_zip</tt> - Whether to generate a <tt>.zip</tt> package. Defaults
+to <tt>false</tt>.
+
+</li>
+<li><tt>include_rakefile</tt> - Include the Rakefile directly within the
+package. Defaults to <tt>true</tt>.
+
+</li>
+<li><tt>include_gemspec</tt> - Include the generated gemspec file within the
+package. Defaults to <tt>true</tt>.
+
+</li>
+<li><tt>ruby_version</tt> - Version string for which Ruby to require (for
+example, <tt>&#8217;&gt;= 1.8.4&#8216;</tt>.
+
+</li>
+<li><tt>eval</tt> - Accepts a proc to be evaluated in the context of the <a
+href="Gem/Specification.html">Gem::Specification</a> object. This allows
+you to set more unusual gemspec options.
+
+</li>
+<li><tt>ignore_pattern</tt> - A filename array, glob array, or regex for
+pathnames that should be ignored when building the manifest.
+
+</li>
+<li><tt>require_paths</tt> - Non-standard requirement paths to add to the gem
+definition.
+
+</li>
+<li><tt>executable_pattern</tt> - A filename array, glob array, or regex for
+files that should be installed as wrapped executables.
+
+</li>
+</ul>
+<p>
+Security options:
+</p>
+<ul>
+<li><tt>private_key</tt> - The path to your gem private key. Defaults to
+ENV[&#8216;GEM_PRIVATE_KEY&#8217;], if available. This accessor is not
+published in the resulting gemspec.
+
+</li>
+<li><tt>certificate_chain</tt> - An array representing your certificate
+authorization chain. If no one else has signed your certificate, just set
+it to your own cert. Defaults to ENV[&#8216;GEM_CERTIFICATE_CHAIN&#8217;],
+if available. This accessor is not published in the resulting gemspec.
+
+</li>
+<li><tt>require_signed</tt> - Force <a href="Echoe.html">Echoe</a> to refuse to
+package your gem if it&#8216;s not properly signed. Default false.
+
+</li>
+</ul>
+<p>
+Publishing options:
+</p>
+<ul>
+<li><tt>project</tt> - The name of the Rubyforge project. Defaults to the name
+of the gem.
+
+</li>
+<li><tt>docs_host</tt> - A host and filesystem path to publish the
+documentation to. Defaults to GitHub pages for the project. SSH upload to
+an accessible static file host also works.
+
+</li>
+</ul>
+<p>
+Documentation options:
+</p>
+<ul>
+<li><tt>rdoc_pattern</tt> - A filename array, glob array, or regex for
+filenames that should be passed to RDoc.
+
+</li>
+<li><tt>rdoc_template</tt> - A path to an RDoc template. Defaults to the
+generic template.
+
+</li>
+</ul>
+</div>
+
+
+
+
+<p></p>
+
+<h1>Child modules and classes</h1><p>Module <a href="Echoe/Platform.html" class="link">Echoe::Platform</a><br />
+</p>
+
+
+
+<h1>Attributes</h1><p><table><tr><th>Name</th><th>Read/write?</th></tr>
+<tr>
+<td class="highlight">author</td>
+
+
+
+
+<td class="normal">RW</td>
+</tr>
+<tr>
+<td class="highlight">bin_files</td>
+
+
+
+
+<td class="normal">RW</td>
+</tr>
+<tr>
+<td class="highlight">certificate_chain</td>
+
+
+
+
+<td class="normal">RW</td>
+</tr>
+<tr>
+<td class="highlight">changelog</td>
+
+
+
+
+<td class="normal">RW</td>
+</tr>
+<tr>
+<td class="highlight">changelog_patterns</td>
+
+
+
+
+<td class="normal">RW</td>
+</tr>
+<tr>
+<td class="highlight">changes</td>
+
+
+
+
+<td class="normal">RW</td>
+</tr>
+<tr>
+<td class="highlight">clean_pattern</td>
+
+
+
+
+<td class="normal">RW</td>
+</tr>
+<tr>
+<td class="highlight">dependencies</td>
+
+
+
+
+<td class="normal">RW</td>
+</tr>
+<tr>
+<td class="highlight">description</td>
+
+
+
+
+<td class="normal">RW</td>
+</tr>
+<tr>
+<td class="highlight">development_dependencies</td>
+
+
+
+
+<td class="normal">RW</td>
+</tr>
+<tr>
+<td class="highlight">docs_host</td>
+
+
+
+
+<td class="normal">RW</td>
+</tr>
+<tr>
+<td class="highlight">email</td>
+
+
+
+
+<td class="normal">RW</td>
+</tr>
+<tr>
+<td class="highlight">eval</td>
+
+
+
+
+<td class="normal">RW</td>
+</tr>
+<tr>
+<td class="highlight">executable_pattern</td>
+
+
+
+
+<td class="normal">RW</td>
+</tr>
+<tr>
+<td class="highlight">extension_pattern</td>
+
+
+
+
+<td class="normal">RW</td>
+</tr>
+<tr>
+<td class="highlight">extensions</td>
+
+
+
+
+<td class="normal">RW</td>
+</tr>
+<tr>
+<td class="highlight">extra_deps</td>
+
+
+
+
+<td class="normal">RW</td>
+</tr>
+<tr>
+<td class="highlight">files</td>
+
+
+
+
+<td class="normal">RW</td>
+</tr>
+<tr>
+<td class="highlight">gem_bin</td>
+
+
+
+
+<td class="normal">RW</td>
+</tr>
+<tr>
+<td class="highlight">gemspec_format</td>
+
+
+
+
+<td class="normal">RW</td>
+</tr>
+<tr>
+<td class="highlight">gemspec_name</td>
+
+
+
+
+<td class="normal">RW</td>
+</tr>
+<tr>
+<td class="highlight">has_rdoc</td>
+
+
+
+
+<td class="normal">RW</td>
+</tr>
+<tr>
+<td class="highlight">ignore_pattern</td>
+
+
+
+
+<td class="normal">RW</td>
+</tr>
+<tr>
+<td class="highlight">include_gemspec</td>
+
+
+
+
+<td class="normal">RW</td>
+</tr>
+<tr>
+<td class="highlight">include_rakefile</td>
+
+
+
+
+<td class="normal">RW</td>
+</tr>
+<tr>
+<td class="highlight">install_message</td>
+
+
+
+
+<td class="normal">RW</td>
+</tr>
+<tr>
+<td class="highlight">lib_files</td>
+
+
+
+
+<td class="normal">RW</td>
+</tr>
+<tr>
+<td class="highlight">manifest_name</td>
+
+
+
+
+<td class="normal">RW</td>
+</tr>
+<tr>
+<td class="highlight">name</td>
+
+
+
+
+<td class="normal">RW</td>
+</tr>
+<tr>
+<td class="highlight">need_gem</td>
+
+
+
+
+<td class="normal">RW</td>
+</tr>
+<tr>
+<td class="highlight">need_tar_gz</td>
+
+
+
+
+<td class="normal">RW</td>
+</tr>
+<tr>
+<td class="highlight">need_tgz</td>
+
+
+
+
+<td class="normal">RW</td>
+</tr>
+<tr>
+<td class="highlight">need_zip</td>
+
+
+
+
+<td class="normal">RW</td>
+</tr>
+<tr>
+<td class="highlight">platform</td>
+
+
+
+
+<td class="normal">RW</td>
+</tr>
+<tr>
+<td class="highlight">private_key</td>
+
+
+
+
+<td class="normal">RW</td>
+</tr>
+<tr>
+<td class="highlight">project</td>
+
+
+
+
+<td class="normal">RW</td>
+</tr>
+<tr>
+<td class="highlight">rakefile_name</td>
+
+
+
+
+<td class="normal">RW</td>
+</tr>
+<tr>
+<td class="highlight">rcov_options</td>
+
+
+
+
+<td class="normal">RW</td>
+</tr>
+<tr>
+<td class="highlight">rdoc_files</td>
+
+
+
+
+<td class="normal">RW</td>
+</tr>
+<tr>
+<td class="highlight">rdoc_options</td>
+
+
+
+
+<td class="normal">RW</td>
+</tr>
+<tr>
+<td class="highlight">rdoc_pattern</td>
+
+
+
+
+<td class="normal">RW</td>
+</tr>
+<tr>
+<td class="highlight">rdoc_template</td>
+
+
+
+
+<td class="normal">RW</td>
+</tr>
+<tr>
+<td class="highlight">require_paths</td>
+
+
+
+
+<td class="normal">RW</td>
+</tr>
+<tr>
+<td class="highlight">require_signed</td>
+
+
+
+
+<td class="normal">RW</td>
+</tr>
+<tr>
+<td class="highlight">retain_gemspec</td>
+
+
+
+
+<td class="normal">RW</td>
+</tr>
+<tr>
+<td class="highlight">ruby_version</td>
+
+
+
+
+<td class="normal">RW</td>
+</tr>
+<tr>
+<td class="highlight">rubygems_version</td>
+
+
+
+
+<td class="normal">RW</td>
+</tr>
+<tr>
+<td class="highlight">runtime_dependencies</td>
+
+
+
+
+<td class="normal">RW</td>
+</tr>
+<tr>
+<td class="highlight">spec</td>
+
+
+
+
+<td class="normal">RW</td>
+</tr>
+<tr>
+<td class="highlight">spec_pattern</td>
+
+
+
+
+<td class="normal">RW</td>
+</tr>
+<tr>
+<td class="highlight">summary</td>
+
+
+
+
+<td class="normal">RW</td>
+</tr>
+<tr>
+<td class="highlight">test_files</td>
+
+
+
+
+<td class="normal">RW</td>
+</tr>
+<tr>
+<td class="highlight">test_pattern</td>
+
+
+
+
+<td class="normal">RW</td>
+</tr>
+<tr>
+<td class="highlight">url</td>
+
+
+
+
+<td class="normal">RW</td>
+</tr>
+<tr>
+<td class="highlight">use_sudo</td>
+
+
+
+
+<td class="normal">RW</td>
+</tr>
+<tr>
+<td class="highlight">version</td>
+
+
+
+
+<td class="normal">RW</td>
+</tr>
+</table></p>
+
+
+<h1>Public Class Methods</h1>
+
+
+<a class="small" name="M000001"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000001'>
+
+
+new
+
+(name, _version = nil) {|self if block_given?| ...}
+
+</a>
+</h3>
+
+<p class="source_link" id="M000001-show-link"><a onclick="toggle('M000001-source'); toggleText('M000001-link'); return false;" href="#" id="M000001-link">Show source...</a></p><div class="source" id="M000001-source"><pre>     <span class="ruby-comment cmt"># File lib/echoe.rb, line 164</span>
+164:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">initialize</span>(<span class="ruby-identifier">name</span>, <span class="ruby-identifier">_version</span> = <span class="ruby-keyword kw">nil</span>)
+165:     <span class="ruby-comment cmt"># Defaults</span>
+166: 
+167:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">name</span> = <span class="ruby-identifier">name</span>
+168:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">project</span> = <span class="ruby-identifier">name</span>.<span class="ruby-identifier">downcase</span>
+169:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">changelog</span> = <span class="ruby-value str">&quot;CHANGELOG&quot;</span>
+170:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">author</span> = <span class="ruby-value str">&quot;&quot;</span>
+171:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">email</span> = <span class="ruby-value str">&quot;&quot;</span>
+172:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">clean_pattern</span> = [<span class="ruby-value str">&quot;pkg&quot;</span>, <span class="ruby-value str">&quot;doc&quot;</span>, <span class="ruby-value str">'build/*'</span>, <span class="ruby-value str">'**/coverage'</span>, <span class="ruby-value str">'**/*.o'</span>, <span class="ruby-value str">'**/*.so'</span>, <span class="ruby-value str">'**/*.a'</span>, <span class="ruby-value str">'**/*.log'</span>, <span class="ruby-value str">&quot;{ext,lib}/*.{bundle,so,obj,pdb,lib,def,exp}&quot;</span>, <span class="ruby-value str">&quot;ext/Makefile&quot;</span>, <span class="ruby-value str">&quot;{ext,lib}/**/*.{bundle,so,obj,pdb,lib,def,exp}&quot;</span>, <span class="ruby-value str">&quot;ext/**/Makefile&quot;</span>, <span class="ruby-value str">&quot;pkg&quot;</span>, <span class="ruby-value str">&quot;*.gem&quot;</span>, <span class="ruby-value str">&quot;.config&quot;</span>]
+173:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">test_pattern</span> = <span class="ruby-constant">File</span>.<span class="ruby-identifier">exist?</span>(<span class="ruby-value str">&quot;test/test_all.rb&quot;</span>) <span class="ruby-operator">?</span> <span class="ruby-value str">&quot;test/test_all.rb&quot;</span> <span class="ruby-operator">:</span> [<span class="ruby-value str">'test/**/test_*.rb'</span>, <span class="ruby-value str">'test/**/*_test.rb'</span>]
+174:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">spec_pattern</span> = <span class="ruby-value str">&quot;spec/**/*_spec.rb&quot;</span>
+175: 
+176:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">ignore_pattern</span> = <span class="ruby-regexp re">/^(pkg|doc)|\.svn|CVS|\.bzr|\.DS|\.git/</span>
+177: 
+178:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">changelog_patterns</span> = {
+179:         <span class="ruby-identifier">:version</span> =<span class="ruby-operator">&gt;</span> [
+180:             <span class="ruby-regexp re">/^\s*v([\d\w\.]+)(\.|\s|$)/</span>,
+181:             <span class="ruby-regexp re">/\s*\*\s*([\d\w\.]+)\s*\*\s*$/</span>
+182:           ],
+183:         <span class="ruby-identifier">:changes</span> =<span class="ruby-operator">&gt;</span> [
+184:           <span class="ruby-regexp re">/^\s*v([\d\.]+\. .*)/</span>,
+185:           <span class="ruby-regexp re">/\*\s*[\d\.]+\s*\*\s*(.*)\*\s*[\d\.]+\s*\*$/</span><span class="ruby-identifier">m</span>
+186:         ]
+187:       }
+188: 
+189:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">description</span> = <span class="ruby-value str">&quot;&quot;</span>
+190:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">summary</span> = <span class="ruby-value str">&quot;&quot;</span>
+191:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">install_message</span> = <span class="ruby-keyword kw">nil</span>
+192:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">executable_pattern</span> = <span class="ruby-regexp re">/^bin\//</span>
+193:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">require_paths</span> = <span class="ruby-keyword kw">nil</span>
+194:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">has_rdoc</span> = <span class="ruby-keyword kw">true</span>
+195:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">use_sudo</span> = <span class="ruby-operator">!</span>(<span class="ruby-constant">Platform</span>.<span class="ruby-identifier">windows?</span> <span class="ruby-keyword kw">or</span> <span class="ruby-constant">ENV</span>[<span class="ruby-value str">'GEM_HOME'</span>].<span class="ruby-identifier">to_s</span>.<span class="ruby-identifier">include?</span>(<span class="ruby-constant">ENV</span>[<span class="ruby-value str">'USER'</span>].<span class="ruby-identifier">to_s</span>))
+196:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">gem_bin</span> = <span class="ruby-node">&quot;gem#{Platform.suffix}&quot;</span>
+197:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">rcov_options</span> = []
+198:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">rdoc_pattern</span> = <span class="ruby-regexp re">/^(lib|bin|tasks|ext)|^README|^CHANGELOG|^TODO|^LICENSE|^COPYING$/</span>
+199: 
+200:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">gemspec_format</span> = <span class="ruby-identifier">:ruby</span>
+201: 
+202:     <span class="ruby-identifier">title</span> = (<span class="ruby-identifier">name</span>.<span class="ruby-identifier">downcase</span> <span class="ruby-operator">==</span> <span class="ruby-identifier">name</span> <span class="ruby-value">? </span><span class="ruby-identifier">name</span>.<span class="ruby-identifier">capitalize</span> <span class="ruby-operator">:</span> <span class="ruby-identifier">name</span>)
+203:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">rdoc_options</span> = [<span class="ruby-value str">'--line-numbers'</span>, <span class="ruby-value str">'--inline-source'</span>, <span class="ruby-value str">'--title'</span>, <span class="ruby-identifier">title</span>]
+204: 
+205:     <span class="ruby-identifier">readme</span> = <span class="ruby-constant">Dir</span>[<span class="ruby-value str">'*'</span>].<span class="ruby-identifier">detect</span> { <span class="ruby-operator">|</span><span class="ruby-identifier">filename</span><span class="ruby-operator">|</span> <span class="ruby-identifier">filename</span> <span class="ruby-operator">=~</span> <span class="ruby-regexp re">/^readme/i</span> }
+206:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">rdoc_options</span> <span class="ruby-operator">+=</span> [<span class="ruby-value str">'--main'</span>, <span class="ruby-identifier">readme</span>] <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">readme</span>
+207: 
+208:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">runtime_dependencies</span> = []
+209:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">development_dependencies</span> = [] <span class="ruby-comment cmt"># These appear to not work at all</span>
+210:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">manifest_name</span> = <span class="ruby-value str">&quot;Manifest&quot;</span>
+211:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">extension_pattern</span> = [<span class="ruby-value str">&quot;ext/**/extconf.rb&quot;</span>, <span class="ruby-value str">&quot;ext/extconf.rb&quot;</span>]
+212:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">private_key</span> = <span class="ruby-constant">ENV</span>[<span class="ruby-value str">'GEM_PRIVATE_KEY'</span>]
+213:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">require_signed</span> = <span class="ruby-keyword kw">false</span>
+214:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">certificate_chain</span> = <span class="ruby-constant">ENV</span>[<span class="ruby-value str">'GEM_CERTIFICATE_CHAIN'</span>].<span class="ruby-identifier">to_s</span>.<span class="ruby-identifier">split</span>(<span class="ruby-regexp re">/\,\s*/</span>).<span class="ruby-identifier">compact</span>
+215: 
+216:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">need_gem</span> = <span class="ruby-keyword kw">true</span>
+217:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">need_tar_gz</span> = <span class="ruby-keyword kw">true</span>
+218:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">need_tgz</span> = <span class="ruby-keyword kw">false</span>
+219:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">need_zip</span> = <span class="ruby-keyword kw">false</span>
+220:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">platform</span> = <span class="ruby-identifier">$platform</span>
+221: 
+222:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">include_rakefile</span> = <span class="ruby-keyword kw">true</span>
+223:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">include_gemspec</span> = <span class="ruby-keyword kw">true</span>
+224:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">gemspec_name</span> = <span class="ruby-node">&quot;#{name}.gemspec&quot;</span>
+225:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">retain_gemspec</span> = <span class="ruby-keyword kw">false</span>
+226:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">rakefile_name</span> = <span class="ruby-value str">&quot;Rakefile&quot;</span>
+227:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">rubygems_version</span> = <span class="ruby-value str">&quot;&gt;= 1.2&quot;</span>
+228: 
+229:     <span class="ruby-keyword kw">yield</span> <span class="ruby-keyword kw">self</span> <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">block_given?</span>
+230: 
+231:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">docs_host</span> <span class="ruby-operator">||=</span> <span class="ruby-node">&quot;git@github.com:#{self.project}/#{self.project}.github.com&quot;</span>
+232:     <span class="ruby-keyword kw">if</span> <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">docs_host</span> <span class="ruby-operator">=~</span> <span class="ruby-regexp re">/git@github.com/</span>
+233:       <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">url</span> <span class="ruby-operator">||=</span> <span class="ruby-node">&quot;http://#{self.project}.github.com/#{self.project}/#{(self.name + '/') if project != name}&quot;</span>
+234:     <span class="ruby-keyword kw">end</span>
+235: 
+236:     <span class="ruby-comment cmt"># legacy compatibility</span>
+237:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">runtime_dependencies</span> = <span class="ruby-identifier">dependencies</span> <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">dependencies</span> <span class="ruby-keyword kw">and</span> <span class="ruby-identifier">runtime_dependencies</span>.<span class="ruby-identifier">empty?</span>
+238:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">runtime_dependencies</span> = <span class="ruby-identifier">extra_deps</span> <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">extra_deps</span> <span class="ruby-keyword kw">and</span> <span class="ruby-identifier">runtime_dependencies</span>.<span class="ruby-identifier">empty?</span>
+239:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">rdoc_pattern</span> = <span class="ruby-identifier">rdoc_files</span> <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">rdoc_files</span>
+240:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">extension_pattern</span> = <span class="ruby-identifier">extensions</span> <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">extensions</span>
+241: 
+242:     <span class="ruby-comment cmt"># read manifest</span>
+243:     <span class="ruby-keyword kw">begin</span>
+244:       <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">files</span> = <span class="ruby-constant">File</span>.<span class="ruby-identifier">readlines</span>(<span class="ruby-identifier">manifest_name</span>).<span class="ruby-identifier">map</span> { <span class="ruby-operator">|</span><span class="ruby-identifier">x</span><span class="ruby-operator">|</span> <span class="ruby-identifier">x</span>.<span class="ruby-identifier">strip</span> } <span class="ruby-operator">+</span>
+245:         [(<span class="ruby-identifier">gemspec_name</span> <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">include_gemspec</span>)] <span class="ruby-operator">+</span>
+246:         [(<span class="ruby-identifier">rakefile_name</span> <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">include_rakefile</span>)]
+247:       <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">files</span> = <span class="ruby-identifier">files</span>.<span class="ruby-identifier">compact</span>.<span class="ruby-identifier">uniq</span>
+248:     <span class="ruby-keyword kw">rescue</span> <span class="ruby-constant">Errno</span><span class="ruby-operator">::</span><span class="ruby-constant">ENOENT</span>
+249:       <span class="ruby-keyword kw">unless</span> <span class="ruby-constant">ARGV</span>.<span class="ruby-identifier">include?</span> <span class="ruby-value str">&quot;manifest&quot;</span>
+250:         <span class="ruby-identifier">puts</span> <span class="ruby-value str">&quot;Missing manifest. You can build one with 'rake manifest'.&quot;</span>
+251:         <span class="ruby-identifier">exit</span> <span class="ruby-value">1</span>
+252:       <span class="ruby-keyword kw">else</span>
+253:         <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">files</span> = []
+254:       <span class="ruby-keyword kw">end</span>
+255:     <span class="ruby-keyword kw">end</span>
+256: 
+257:     <span class="ruby-comment cmt"># snag version and changeset</span>
+258:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">version</span> <span class="ruby-operator">||=</span> <span class="ruby-identifier">_version</span>
+259:     <span class="ruby-keyword kw">unless</span> <span class="ruby-identifier">version</span>
+260:       <span class="ruby-keyword kw">if</span> <span class="ruby-constant">File</span>.<span class="ruby-identifier">exist?</span> <span class="ruby-identifier">changelog</span>
+261:         <span class="ruby-identifier">parsed</span> = <span class="ruby-constant">Array</span>(<span class="ruby-identifier">changelog_patterns</span>[<span class="ruby-identifier">:version</span>]).<span class="ruby-identifier">map</span> <span class="ruby-keyword kw">do</span> <span class="ruby-operator">|</span><span class="ruby-identifier">pattern</span><span class="ruby-operator">|</span>
+262:           <span class="ruby-identifier">open</span>(<span class="ruby-identifier">changelog</span>) <span class="ruby-keyword kw">do</span> <span class="ruby-operator">|</span><span class="ruby-identifier">log</span><span class="ruby-operator">|</span>
+263:             <span class="ruby-identifier">log</span>.<span class="ruby-identifier">read</span>[<span class="ruby-identifier">pattern</span>, <span class="ruby-value">1</span>]
+264:           <span class="ruby-keyword kw">end</span>
+265:         <span class="ruby-keyword kw">end</span>.<span class="ruby-identifier">compact</span>.<span class="ruby-identifier">first</span>
+266:         <span class="ruby-identifier">raise</span> <span class="ruby-node">&quot;Could not parse version from #{changelog}&quot;</span> <span class="ruby-keyword kw">unless</span> <span class="ruby-identifier">parsed</span>
+267:         <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">version</span> = <span class="ruby-identifier">parsed</span>.<span class="ruby-identifier">chomp</span>(<span class="ruby-value str">&quot;.&quot;</span>).<span class="ruby-identifier">strip</span>
+268:       <span class="ruby-keyword kw">else</span>
+269:         <span class="ruby-identifier">raise</span> <span class="ruby-node">&quot;No #{changelog} found, and no version supplied in Rakefile.&quot;</span>
+270:       <span class="ruby-keyword kw">end</span>
+271:     <span class="ruby-keyword kw">end</span>
+272: 
+273:     <span class="ruby-keyword kw">unless</span> <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">changes</span>
+274:       <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">changes</span> = <span class="ruby-keyword kw">if</span> <span class="ruby-constant">File</span>.<span class="ruby-identifier">exist?</span> <span class="ruby-identifier">changelog</span>
+275:         <span class="ruby-constant">Array</span>(<span class="ruby-identifier">changelog_patterns</span>[<span class="ruby-identifier">:changes</span>]).<span class="ruby-identifier">map</span> <span class="ruby-keyword kw">do</span> <span class="ruby-operator">|</span><span class="ruby-identifier">pattern</span><span class="ruby-operator">|</span>
+276:           <span class="ruby-identifier">open</span>(<span class="ruby-identifier">changelog</span>) <span class="ruby-keyword kw">do</span> <span class="ruby-operator">|</span><span class="ruby-identifier">log</span><span class="ruby-operator">|</span>
+277:             <span class="ruby-identifier">log</span>.<span class="ruby-identifier">read</span>[<span class="ruby-identifier">pattern</span>, <span class="ruby-value">1</span>]
+278:           <span class="ruby-keyword kw">end</span>
+279:         <span class="ruby-keyword kw">end</span>.<span class="ruby-identifier">compact</span>.<span class="ruby-identifier">first</span> <span class="ruby-keyword kw">or</span> <span class="ruby-value str">&quot;&quot;</span>
+280:       <span class="ruby-keyword kw">else</span>
+281:         <span class="ruby-value str">&quot;&quot;</span>
+282:       <span class="ruby-keyword kw">end</span>
+283:     <span class="ruby-keyword kw">end</span>
+284: 
+285:     <span class="ruby-comment cmt"># set some post-defaults</span>
+286:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">certificate_chain</span> = <span class="ruby-constant">Array</span>(<span class="ruby-identifier">certificate_chain</span>).<span class="ruby-identifier">map</span> {<span class="ruby-operator">|</span><span class="ruby-identifier">file</span><span class="ruby-operator">|</span> <span class="ruby-constant">File</span>.<span class="ruby-identifier">expand_path</span>(<span class="ruby-identifier">file</span>)}
+287:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">private_key</span> = <span class="ruby-constant">File</span>.<span class="ruby-identifier">expand_path</span>(<span class="ruby-identifier">private_key</span>) <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">private_key</span>
+288:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">description</span> = <span class="ruby-identifier">summary</span> <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">description</span>.<span class="ruby-identifier">empty?</span>
+289:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">summary</span> = <span class="ruby-identifier">description</span> <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">summary</span>.<span class="ruby-identifier">empty?</span>
+290:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">clean_pattern</span> = <span class="ruby-identifier">apply_pattern</span>(<span class="ruby-identifier">clean_pattern</span>)
+291:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">extension_pattern</span> = <span class="ruby-identifier">apply_pattern</span>(<span class="ruby-identifier">extension_pattern</span>, <span class="ruby-identifier">files</span>)
+292: 
+293:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">ignore_pattern</span> = <span class="ruby-identifier">apply_pattern</span>(<span class="ruby-identifier">ignore_pattern</span>)
+294:     <span class="ruby-identifier">honor_gitignore!</span> <span class="ruby-keyword kw">if</span> <span class="ruby-constant">File</span>.<span class="ruby-identifier">exist?</span>(<span class="ruby-value str">&quot;.git&quot;</span>)
+295: 
+296:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">rdoc_pattern</span> = <span class="ruby-identifier">apply_pattern</span>(<span class="ruby-identifier">rdoc_pattern</span>, <span class="ruby-identifier">files</span>) <span class="ruby-operator">-</span> [<span class="ruby-identifier">manifest_name</span>]
+297:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">executable_pattern</span> = <span class="ruby-identifier">apply_pattern</span>(<span class="ruby-identifier">executable_pattern</span>, <span class="ruby-identifier">files</span>)
+298:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">test_pattern</span> = <span class="ruby-identifier">apply_pattern</span>(<span class="ruby-identifier">test_pattern</span>)
+299:     <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">spec_pattern</span> = <span class="ruby-identifier">apply_pattern</span>(<span class="ruby-identifier">spec_pattern</span>)
+300: 
+301:     <span class="ruby-identifier">define_tasks</span>
+302:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000002"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000002'>
+
+
+silence
+
+() {|| ...}
+
+</a>
+</h3>
+
+<p class="source_link" id="M000002-show-link"><a onclick="toggle('M000002-source'); toggleText('M000002-link'); return false;" href="#" id="M000002-link">Show source...</a></p><div class="source" id="M000002-source"><pre>    <span class="ruby-comment cmt"># File lib/echoe/extensions.rb, line 14</span>
+14:   <span class="ruby-keyword kw">def</span> <span class="ruby-keyword kw">self</span>.<span class="ruby-identifier">silence</span>
+15:     <span class="ruby-keyword kw">if</span> <span class="ruby-operator">!</span><span class="ruby-constant">ENV</span>[<span class="ruby-value str">'VERBOSE'</span>]      
+16:       <span class="ruby-identifier">stdout</span>, <span class="ruby-identifier">stderr</span> = <span class="ruby-identifier">$stdout</span>.<span class="ruby-identifier">clone</span>, <span class="ruby-identifier">$stderr</span>.<span class="ruby-identifier">clone</span>
+17:       <span class="ruby-identifier">$stdout</span>.<span class="ruby-identifier">reopen</span>(<span class="ruby-constant">File</span>.<span class="ruby-identifier">new</span>(<span class="ruby-node">&quot;#{Dir.tmpdir}/stdout.echoe&quot;</span>, <span class="ruby-value str">'w'</span>))
+18:       <span class="ruby-identifier">$stderr</span>.<span class="ruby-identifier">reopen</span>(<span class="ruby-constant">File</span>.<span class="ruby-identifier">new</span>(<span class="ruby-node">&quot;#{Dir.tmpdir}/stderr.echoe&quot;</span>, <span class="ruby-value str">'w'</span>))
+19:       <span class="ruby-keyword kw">begin</span>
+20:         <span class="ruby-keyword kw">yield</span>
+21:       <span class="ruby-keyword kw">ensure</span>
+22:         <span class="ruby-identifier">$stdout</span>.<span class="ruby-identifier">reopen</span>(<span class="ruby-identifier">stdout</span>)
+23:         <span class="ruby-identifier">$stderr</span>.<span class="ruby-identifier">reopen</span>(<span class="ruby-identifier">stderr</span>)
+24:       <span class="ruby-keyword kw">end</span>
+25:     <span class="ruby-keyword kw">else</span>
+26:       <span class="ruby-keyword kw">yield</span>
+27:     <span class="ruby-keyword kw">end</span>
+28:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+
+
+
+
+</div><div class="clear" id="footer">Generated on Jan 21, 2008 / Allison 2 &copy; 2007 <a href="http://cloudbur.st">Cloudburst, LLC</a></div></div></body></html>

@@ -1,0 +1,483 @@
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head><meta content="text/html; charset=utf-8" http-equiv="Content-Type"/><title>File: BENCHMARKS</title><link type="text/css" href=".././rdoc-style.css" media="screen" rel="stylesheet"/><script type="text/javascript">
+// Allison template
+// Copyright 2007, 2008 Cloudburst, LLC. Licensed under the AFL 3. See the included LICENSE file.
+
+var href_base = '.././rdoc-style.css'.replace(/(.*\/).*/, '$1'); // inline js is good for something  
+
+function $(id) {
+    if (document.getElementById)
+      elem = document.getElementById(id);
+    else if ( document.all )
+      elem = eval("document.all." + id);
+    else
+      return false;
+    return elem;
+}
+
+  function toggle(id) {
+    elem = $(id);
+    elemStyle = elem.style;   
+    if (elemStyle.display == "block") {
+      elemStyle.display = "none"
+    } else {
+      elemStyle.display = "block"
+    }
+    return true;
+  }
+
+  function toggleText(id) {
+    elem = $(id)
+    if (m = elem.innerHTML.match(/(Hide)(.*)/)) {
+      elem.innerHTML = "Show" + m[2];
+    } else if (m = elem.innerHTML.match(/(Show)(.*)/)) {
+      elem.innerHTML = "Hide" + m[2];
+    }
+    return true;
+  }
+
+function span(s, klass) {
+  return '<span class="' + klass + '">' + s + '</span>';
+}
+  
+function highlightSymbols() {
+  pres = document.getElementsByTagName('pre');
+  for(var i = 0; i < pres.length; i++) {
+    pre = pres[i];
+    spans = pre.getElementsByTagName('span');
+    for(var k = 0; k < spans.length; k++) {
+      span = spans[k];
+      if (span.className.match(/ruby-identifier/)) {
+        if (span.innerHTML.match(/^:/)) {
+          span.className += " ruby-symbol";
+        }
+      }
+    }
+  }
+}
+
+ function hasClass(obj) {
+     var result = false;
+     if (obj.getAttributeNode("class") != null) {
+         result = obj.getAttributeNode("class").value;
+     }
+     return result;
+  }   
+
+ function stripe() {
+    var even = true;
+    var color = "#e4ebed";
+    var tables = document.getElementsByTagName('table');
+    if (tables.length == 0) { return; }
+    for (var h = 0; h < tables.length; h++) {
+        var trs = tables[h].getElementsByTagName("tr");
+        for (var i = 0; i < trs.length; i++) {
+          var tds = trs[i].getElementsByTagName("td");
+            for (var j = 0; j < tds.length; j++) {       
+              if (hasClass(tds[j]) != "first") {                
+              var mytd = tds[j];
+              if (even) {
+                mytd.style.backgroundColor = color;
+              }         
+            }
+          }
+          even =  ! even;
+      }
+    }
+  }
+  
+function ajaxGet(url) {
+  url = (href_base + url).replace('/./', '/')
+  var req = false;
+
+  if (window.ActiveXObject) {
+    try {
+      // stupid hack because IE7 disables local Ajax with the native xmlhttprequest object
+      // for security purposes. Yet ActiveX still works. Thanks, Microsoft. I hate you. Die.
+      req = new ActiveXObject("MSXML2.XMLHTTP.3.0");
+    } catch (e) {
+      try {
+        /* IE 6 and maybe 5, don't know, don't care */
+        req = new ActiveXObject("Msxml2.XMLHTTP");
+      } catch (e) {
+        try {
+          req = new ActiveXObject("Microsoft.XMLHTTP");
+        } catch (e) {
+          req = false;
+        }
+      }
+    }
+  }
+    
+  /* real browsers */
+  if (!req && window.XMLHttpRequest) {
+    try {
+      req = new XMLHttpRequest();
+    } catch (e) {
+      req = false;
+    }
+  } 
+  
+  if (req) {
+    req.open('GET', url, false);
+    req.send(null);
+    return req.responseText;
+  } else {
+    return "Ajax error";  
+  }
+}
+
+
+function addEvent(elm, evType, fn, useCapture) {
+	if (elm.addEventListener) {
+	  elm.addEventListener(evType, fn, useCapture);  
+  	return true;
+	} else if (elm.attachEvent) {
+  	var r = elm.attachEvent('on' + evType, fn);  
+	  return r;  
+	} else {
+  	elm['on' + evType] = fn;
+	}
+}
+
+function insertIndices() {
+  pages = ["class", "file", "method"]
+  for (x in pages) { 
+    $(pages[x]).innerHTML += ajaxGet('fr_' + pages[x] + '_index.html').replace(/(href=")/g, '$1' + href_base);
+  }
+  /* mouseoverify method links */
+  links = $('method').getElementsByTagName('a');
+  for (var x = 0; x < links.length; x++) {
+    if (m = links[x].innerHTML.match(/(.*)\s\((.*)\)/)) {
+      links[x].innerHTML = m[1] + '<br>';
+      links[x].title = m[2];
+    }
+  }
+  /* this is stupid */
+  $('class').style.display = "block";
+  $('file').style.display = "block";
+  
+  /* has to be here because IE7 does not guarantee the onLoad callback order */
+  abbreviateIndicesInner(["class", "file"], 25, "a");
+  /* same, linkTitle() depends on the class link list */
+  linkTitle();
+}
+
+function abbreviateIndices() {
+  var ids = ["defined_in", "child_of", "includes", "requires", "method", "methods"];
+  abbreviateIndicesInner(ids, 25, 'a');
+  abbreviateIndicesInner(ids, 25, 'span');
+}
+
+function abbreviateIndicesInner(indices, amount, tag) {
+  for (var x = 0; x < indices.length; x++) { 
+    var the_index = $(indices[x]);
+    if (the_index) {
+      links = the_index.getElementsByTagName(tag);
+      for (var y = 0; y < links.length; y++) {
+        var link = links[y];
+        if (link.getElementsByTagName('span').length == 0 && link.getElementsByTagName('a').length == 0) {
+          // avoid nesting
+          link.innerHTML = link.innerHTML.replace(/<br>|\n/gi, '');
+          link.title = link.innerHTML;
+          link.innerHTML = abbreviate(link.innerHTML, amount) + '<br>';
+        }
+      }
+    }
+  }
+}
+
+function linkTitle() {
+  
+  /* grab the correct title element from the index */
+  var index_page = ajaxGet('index.html');
+  title_text = index_page.match(/<title>(.*)<\/title>/m)[1];
+  document.title = title_text + " - " + document.title;
+  var p = $('header').getElementsByTagName('p')[0]
+  if (p.innerHTML.match(/^\s*$/)) {
+    p.innerHTML = title_text;
+  } else {
+    p.innerHTML = title_text + ": " + p.innerHTML;
+  }
+  
+  /* set the link properly */
+  title_link = index_page.match(/<a\s+href="(.*?)"/)[1];
+  var element = $('title');
+  var item_type = "";
+  var item_name = "";
+  if (m = element.innerHTML.match(/(Class:|Module:|File:)\s*(.*)/)) {
+    item_type = m[1];
+    item_name = m[2];
+  } else {
+    item_name = element.innerHTML;
+  }
+  element.innerHTML = '<a href="' + href_base + title_link + '">' + item_type + " " + abbreviate(item_name, 45) + '</a>';
+  element.getElementsByTagName('a')[0].title = item_name
+  
+  /* breadcrumb navigation */
+  items = item_name.split("::");
+  items_new = item_name.split("::");
+  file_links = $('class').getElementsByTagName('a');
+  for (var x = 0; x < items.length - 1; x++ ){
+    var item = items[x];
+    link = ("/classes/" + items.slice(0,x).join("/") + "/" + item + ".html").replace('//', '/');
+    regex = new RegExp(RegExp.escape(link) + '$');
+    for (var y = 0; y < file_links.length; y++) {
+      if (file_links[y].href.match(regex)) {
+         items_new[x] = '<a href="' + href_base + link + '">' + item + '</a>';
+         break;
+      }
+    }  
+  }
+  $('item_name').innerHTML = item_type + ' ' + items_new.join(" :: ");
+}
+
+function abbreviate(s, size) {
+  while (s.length > size) {
+    var old_s = s;
+    s = s.replace(/\s|\n/mg, '');
+    s = s.replace(/([A-Z])[a-z]+/m, '$1');
+    if (!s || old_s == s) {
+      return "..." + s.substring(s.length - size, s.length);
+    }
+  }
+  return s;
+}
+
+function disableSubmit(event) {
+  var keyCode = event.keyCode ? event.keyCode : event.which ? event.which : event.charCode;
+  if (keyCode == 13) {
+    return false;
+  } else {
+    return true;
+  }
+}
+  
+function filterList(id, s, event) {
+  
+  /* some weak escaping */
+  s = s.replace(/[^\w\d\.\_\-\/\:\=\[\]\?\!]/g, '');
+  s = RegExp.escape(s);
+  
+  var show_all = false;
+  if (s.match(/^\s*$/)) {
+    show_all = true;
+  }
+  
+  links = $(id).getElementsByTagName('a')
+  regex = new RegExp(s, 'i');
+  
+  for (var x = 0; x < links.length; x++) {
+    var link = links[x];
+    if (show_all) {
+      link.style.display = 'inline';
+    } else {
+       if (link.innerHTML.match(regex)) {        
+         link.style.display = 'inline';
+       } else {
+         link.style.display = 'none';
+       }
+    }
+  }
+  return true;
+}
+
+RegExp.escape = function(text) {
+  if (!arguments.callee.sRE) {
+    var specials = ['/', '.', '*', '+', '?', '|', '(', ')', '[', ']', '{', '}', '\\'];
+    arguments.callee.sRE = new RegExp(
+      '(\\' + specials.join('|\\') + ')', 'g'
+    );
+  }
+  return text.replace(arguments.callee.sRE, '\\$1');
+}
+
+function hacks() {
+  // show the spacer if necessary, 
+  divs = document.getElementsByTagName('div');
+  for(var x = 0; x < divs.length; x++) {
+    if (divs[x].className && divs[x].className.match(/top/)) {
+      document.getElementById('spacer').style.display = 'block';
+    }
+  }
+  // remove extra colons from tables
+  tds = document.getElementsByTagName('td');
+  for(var x = 0; x < tds.length; x++) {
+    str = tds[x].innerHTML
+    if (str.charAt(str.length - 1) == ":") {
+      tds[x].innerHTML = str.slice(0, str.length - 1)
+    }
+  }
+}
+
+addEvent(window, 'load', insertIndices, false);
+addEvent(window, 'load', abbreviateIndices, false);
+addEvent(window, 'load', stripe, false);
+addEvent(window, 'load', highlightSymbols, false);
+addEvent(window, 'load', hacks, false);
+</script></head><body><div id="container"><div class="curve" id="preheader_curve_0"></div><div class="curve" id="preheader_curve_1"></div><div class="curve" id="preheader_curve_2"></div><div class="curve" id="preheader_curve_3"></div><div class="curve" id="preheader_curve_4"></div><div class="curve" id="preheader_curve_5"></div><div id="header"><p>
+BENCHMARKS
+</p><span><h1 id="title">
+File: BENCHMARKS
+</h1></span>
+</div><div class="clear"></div><div id="left">
+
+
+
+
+<div id="spacer"></div><div class="navigation darker index" id="class_wrapper"><div class="list_header"><h3>All classes</h3></div><div class="list_header_link"><a onclick="toggle('class'); toggleText('class_link'); return false;" href="#" id="class_link">Hide...</a></div><div class="clear"></div><div id="class"><form><label for="filter_class">Filter:&nbsp;&nbsp;</label><input type="text" onKeyUp="return filterList('class', this.value, event);" onKeyPress="return disableSubmit(event);" id="filter_class"></input></form></div></div><div class="navigation darker index" id="file_wrapper"><div class="list_header"><h3>All files</h3></div><div class="list_header_link"><a onclick="toggle('file'); toggleText('file_link'); return false;" href="#" id="file_link">Hide...</a></div><div class="clear"></div><div id="file"><form><label for="filter_file">Filter:&nbsp;&nbsp;</label><input type="text" onKeyUp="return filterList('file', this.value, event);" onKeyPress="return disableSubmit(event);" id="filter_file"></input></form></div></div><div class="navigation darker index" id="method_wrapper"><div class="list_header"><h3>All methods</h3></div><div class="list_header_link"><a onclick="toggle('method'); toggleText('method_link'); return false;" href="#" id="method_link">Show...</a></div><div class="clear"></div><div id="method"><form><label for="filter_method">Filter:&nbsp;&nbsp;</label><input type="text" onKeyUp="return filterList('method', this.value, event);" onKeyPress="return disableSubmit(event);" id="filter_method"></input></form></div></div></div><div id="content">
+<h1 id="item_name">File: BENCHMARKS</h1>
+
+<div id="description"><p>
+Here are some benchmark results.
+</p>
+<p>
+You can easily run your own benchmarks, as long as you have memcached
+itself on your system:
+</p>
+<pre>
+  $ ruby -e 'system(&quot;ruby #{File.dirname(`gem which memcached`.split(&quot;\n&quot;).
+    last)}/../test/profile/benchmark.rb&quot;)'
+</pre>
+<h2>x86-64 OS X</h2>
+<p>
+These benchmarks were run on a 64-bit OS X machine, with memcached 1.4.5:
+</p>
+<pre>
+  Darwin amber.local 10.6.0 Darwin Kernel Version 10.6.0: Wed Nov 10 18:13:17
+  PST 2010; root:xnu-1504.9.26~3/RELEASE_I386 i386
+  ruby 1.8.7 (2010-04-19 patchlevel 253) [i686-darwin10.4.0], MBARI 0x6770,
+  Ruby Enterprise Edition 2010.02
+  RUBY_HEAP_FREE_MIN=4096
+  RUBY_HEAP_MIN_SLOTS=500000
+  RUBY_HEAP_SLOTS_INCREMENT=250000
+  RUBY_GC_MALLOC_LIMIT=50000000
+  RUBY_HEAP_SLOTS_GROWTH_FACTOR=1
+  RUBY_VERSION=ree-1.8.7-2010.02
+  Ruby 1.8.7p253
+  Loaded memcached 1.1.1
+  Loaded remix-stash 1.1.3
+  Loaded memcache-client 1.8.5
+  Loaded kgio 2.0.0
+  Loaded dalli 1.0.2
+  PID is 21173
+  Loops is 20000
+  Stack depth is 0
+  Small value size is: 13 bytes
+  Large value size is: 4158 bytes
+
+                                            user     system      total        real
+  set: libm:ascii                       0.600000   0.960000   1.560000 (  3.790868)
+  set: libm:ascii:pipeline              0.230000   0.010000   0.240000 (  0.240365)
+  set: libm:ascii:udp                   0.530000   0.580000   1.110000 (  2.573610)
+  set: libm:bin                         0.480000   0.860000   1.340000 (  3.355849)
+  set: libm:bin:buffer                  0.250000   0.100000   0.350000 (  0.859416)
+  set: dalli:bin                        4.270000   1.380000   5.650000 (  7.673922)
+  set: mclient:ascii                    7.020000   1.920000   8.940000 (  9.739894)
+  set: stash:bin                        2.640000   1.060000   3.700000 (  6.100208)
+
+  get: libm:ascii                       0.830000   0.990000   1.820000 (  3.912925)
+  get: libm:ascii:pipeline              0.780000   1.070000   1.850000 (  4.166414)
+  get: libm:ascii:udp                   0.680000   0.620000   1.300000 (  2.872687)
+  get: libm:bin                         0.690000   1.020000   1.710000 (  3.588579)
+  get: libm:bin:buffer                  0.690000   1.210000   1.900000 (  3.927647)
+  get: dalli:bin                        4.530000   1.490000   6.020000 (  8.197772)
+  get: mclient:ascii                    8.660000   1.870000  10.530000 ( 11.176572)
+  get: stash:bin                        2.310000   1.000000   3.310000 (  5.581331)
+
+  get-multi: libm:ascii                 0.650000   0.560000   1.210000 (  2.101080)
+  get-multi: libm:ascii:pipeline        0.750000   0.560000   1.310000 (  2.188553)
+  get-multi: libm:ascii:udp             0.710000   0.470000   1.180000 (  1.680744)
+  get-multi: libm:bin                   0.730000   0.800000   1.530000 (  4.046271)
+  get-multi: libm:bin:buffer            0.710000   0.670000   1.380000 (  2.853617)
+  get-multi: dalli:bin                  7.700000   2.190000   9.890000 ( 10.021851)
+
+  append: libm:ascii                    0.740000   1.000000   1.740000 (  5.609197)
+  append: libm:ascii:pipeline           0.250000   0.010000   0.260000 (  0.875205)
+  append: libm:ascii:udp                0.570000   0.560000   1.130000 (  4.695231)
+  append: libm:bin                      0.540000   0.900000   1.440000 (  4.962085)
+  append: libm:bin:buffer               0.560000   0.780000   1.340000 (  2.669085)
+  append: dalli:bin                     3.620000   1.240000   4.860000 (  8.718248)
+  append: mclient:ascii                 7.220000   1.750000   8.970000 ( 11.657408)
+
+  prepend: libm:ascii                   0.660000   1.040000   1.700000 (  5.461676)
+  prepend: libm:ascii:pipeline          0.260000   0.010000   0.270000 (  0.760103)
+  prepend: libm:ascii:udp               0.670000   0.600000   1.270000 (  4.324850)
+  prepend: libm:bin                     0.560000   0.900000   1.460000 (  5.801869)
+  prepend: libm:bin:buffer              0.530000   0.800000   1.330000 (  3.631074)
+  prepend: dalli:bin                    3.620000   1.240000   4.860000 (  8.531561)
+  prepend: mclient:ascii                6.400000   1.590000   7.990000 ( 12.047692)
+
+  delete: libm:ascii                    1.350000   0.920000   2.270000 (  4.693438)
+  delete: libm:ascii:pipeline           0.320000   0.320000   0.640000 (  0.706662)
+  delete: libm:ascii:udp                1.270000   0.660000   1.930000 (  3.851781)
+  delete: libm:bin                      1.190000   0.960000   2.150000 (  4.456707)
+  delete: libm:bin:buffer               0.230000   0.250000   0.480000 (  0.911735)
+  delete: dalli:bin                     3.850000   1.440000   5.290000 (  7.160706)
+  delete: mclient:ascii                 7.270000   1.670000   8.940000 (  9.618969)
+
+  get-missing: libm:ascii               1.430000   0.970000   2.400000 (  4.982100)
+  get-missing: libm:ascii:pipeline      1.480000   1.200000   2.680000 (  5.505560)
+  get-missing: libm:ascii:udp           1.340000   0.690000   2.030000 (  3.706029)
+  get-missing: libm:bin                 1.390000   0.960000   2.350000 (  4.676127)
+  get-missing: libm:bin:buffer          1.460000   1.230000   2.690000 (  5.048332)
+  get-missing: dalli:bin                3.810000   1.380000   5.190000 (  7.874001)
+  get-missing: mclient:ascii            6.920000   1.600000   8.520000 (  9.999317)
+
+  append-missing: libm:ascii            1.370000   0.990000   2.360000 (  5.073530)
+  append-missing: libm:ascii:pipeline   0.330000   0.010000   0.340000 (  0.374423)
+  append-missing: libm:ascii:udp        1.300000   0.690000   1.990000 (  4.005369)
+  append-missing: libm:bin              1.340000   0.920000   2.260000 (  5.339037)
+  append-missing: dalli:bin             4.020000   1.420000   5.440000 (  8.193874)
+  append-missing: mclient:ascii         6.930000   1.630000   8.560000 ( 10.637547)
+
+  prepend-missing: libm:ascii           1.460000   0.970000   2.430000 (  5.002199)
+  prepend-missing: libm:ascii:pipeline  0.240000   0.010000   0.250000 (  0.253590)
+  prepend-missing: libm:ascii:udp       1.370000   0.710000   2.080000 (  4.243274)
+  prepend-missing: libm:bin             1.360000   0.950000   2.310000 (  4.946014)
+  prepend-missing: dalli:bin            3.910000   1.430000   5.340000 (  7.407236)
+  prepend-missing: mclient:ascii        7.380000   1.730000   9.110000 ( 10.140385)
+
+  set-large: libm:ascii                 0.670000   0.980000   1.650000 (  5.181314)
+  set-large: libm:ascii:pipeline        0.410000   0.330000   0.740000 (  1.757769)
+  set-large: libm:ascii:udp             0.590000   0.670000   1.260000 (  3.510175)
+  set-large: libm:bin                   0.540000   0.980000   1.520000 (  3.878854)
+  set-large: libm:bin:buffer            0.350000   0.440000   0.790000 (  2.036610)
+  set-large: dalli:bin                  5.010000   1.670000   6.680000 (  9.884379)
+  set-large: mclient:ascii              7.500000   2.130000   9.630000 ( 11.357448)
+  set-large: stash:bin                  3.920000   1.130000   5.050000 (  7.488534)
+
+  get-large: libm:ascii                 0.760000   0.950000   1.710000 (  4.151140)
+  get-large: libm:ascii:pipeline        0.820000   1.190000   2.010000 (  4.079482)
+  get-large: libm:ascii:udp             0.770000   0.580000   1.350000 (  2.763797)
+  get-large: libm:bin                   0.640000   0.970000   1.610000 (  3.686591)
+  get-large: libm:bin:buffer            0.690000   1.110000   1.800000 (  3.974967)
+  get-large: dalli:bin                  4.710000   1.430000   6.140000 (  8.011834)
+  get-large: mclient:ascii              8.860000   1.970000  10.830000 ( 12.136812)
+  get-large: stash:bin                  2.420000   0.970000   3.390000 (  5.643309)
+
+  hash:murmur                           0.250000   0.000000   0.250000 (  0.250730)
+  hash:md5                              0.670000   0.000000   0.670000 (  0.680286)
+  hash:fnv1a_64                         0.320000   0.000000   0.320000 (  0.319818)
+  hash:fnv1a_32                         0.310000   0.000000   0.310000 (  0.328325)
+  hash:jenkins                          0.270000   0.010000   0.280000 (  0.270705)
+  hash:default                          0.410000   0.000000   0.410000 (  0.412068)
+  hash:crc                              0.380000   0.000000   0.380000 (  0.377563)
+  hash:hsieh                            0.210000   0.000000   0.210000 (  0.212948)
+  hash:fnv1_32                          0.310000   0.000000   0.310000 (  0.316208)
+  hash:fnv1_64                          0.450000   0.000000   0.450000 (  0.453148)
+  hash:none                             0.210000   0.000000   0.210000 (  0.213811)
+</pre>
+</div>
+
+
+
+
+<p></p>
+
+
+
+
+
+
+
+</div><div class="clear" id="footer">Generated on Jan 21, 2008 / Allison 2 &copy; 2007 <a href="http://cloudbur.st">Cloudburst, LLC</a></div></div></body></html>

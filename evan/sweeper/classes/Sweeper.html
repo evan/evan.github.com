@@ -1,0 +1,964 @@
+<html xml:lang="en" xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta content="text/html; charset=utf-8" http-equiv="Content-Type"/><title>Class: Sweeper</title><link type="text/css" href=".././rdoc-style.css" rel="stylesheet" media="screen"/><script type="text/javascript">
+// Allison 3 template
+// Copyright 2007 Cloudburst LLC, all rights reserved
+// Redistribution or modification prohibited
+
+var href_base = '.././rdoc-style.css'.replace(/(.*\/).*/, '$1'); // inline js is good for something  
+
+function $(id) {
+    if (document.getElementById)
+      elem = document.getElementById(id);
+    else if ( document.all )
+      elem = eval("document.all." + id);
+    else
+      return false;
+    return elem;
+}
+
+  function toggle(id) {
+    elem = $(id);
+    elemStyle = elem.style;   
+    if (elemStyle.display == "block") {
+      elemStyle.display = "none"
+    } else {
+      elemStyle.display = "block"
+    }
+    return true;
+  }
+
+  function toggleText(id) {
+    elem = $(id)
+    if (m = elem.innerHTML.match(/(Hide)(.*)/)) {
+      elem.innerHTML = "Show" + m[2];
+    } else if (m = elem.innerHTML.match(/(Show)(.*)/)) {
+      elem.innerHTML = "Hide" + m[2];
+    }
+    return true;
+  }
+
+function span(s, klass) {
+  return '<span class="' + klass + '">' + s + '</span>';
+}
+  
+function highlightSymbols() {
+  pres = document.getElementsByTagName('pre');
+  for(var i = 0; i < pres.length; i++) {
+    pre = pres[i];
+    spans = pre.getElementsByTagName('span');
+    for(var k = 0; k < spans.length; k++) {
+      span = spans[k];
+      if (span.className.match(/ruby-identifier/)) {
+        if (span.innerHTML.match(/^:/)) {
+          span.className += " ruby-symbol";
+        }
+      }
+    }
+  }
+}
+
+ function hasClass(obj) {
+     var result = false;
+     if (obj.getAttributeNode("class") != null) {
+         result = obj.getAttributeNode("class").value;
+     }
+     return result;
+  }   
+
+ function stripe() {
+    var even = true;
+    var color = "#e4ebed";
+    var tables = document.getElementsByTagName('table');
+    if (tables.length == 0) { return; }
+    for (var h = 0; h < tables.length; h++) {
+        var trs = tables[h].getElementsByTagName("tr");
+        for (var i = 0; i < trs.length; i++) {
+          var tds = trs[i].getElementsByTagName("td");
+            for (var j = 0; j < tds.length; j++) {       
+              if (hasClass(tds[j]) != "first") {                
+              var mytd = tds[j];
+              if (even) {
+                mytd.style.backgroundColor = color;
+              }         
+            }
+          }
+          even =  ! even;
+      }
+    }
+  }
+  
+function ajaxGet(url) {
+  url = (href_base + url).replace('/./', '/')
+  var req = false;
+
+  if (window.ActiveXObject) {
+    try {
+      // stupid hack because IE7 disables local Ajax with the native xmlhttprequest object
+      // for security purposes. Yet ActiveX still works. Thanks, Microsoft. I hate you. Die.
+      req = new ActiveXObject("MSXML2.XMLHTTP.3.0");
+    } catch (e) {
+      try {
+        /* IE 6 and maybe 5, don't know, don't care */
+        req = new ActiveXObject("Msxml2.XMLHTTP");
+      } catch (e) {
+        try {
+          req = new ActiveXObject("Microsoft.XMLHTTP");
+        } catch (e) {
+          req = false;
+        }
+      }
+    }
+  }
+    
+  /* real browsers */
+  if (!req && window.XMLHttpRequest) {
+    try {
+      req = new XMLHttpRequest();
+    } catch (e) {
+      req = false;
+    }
+  } 
+  
+  if (req) {
+    req.open('GET', url, false);
+    req.send(null);
+    return req.responseText;
+  } else {
+    return "Ajax error";  
+  }
+}
+
+
+function addEvent(elm, evType, fn, useCapture) {
+	if (elm.addEventListener) {
+	  elm.addEventListener(evType, fn, useCapture);  
+  	return true;
+	} else if (elm.attachEvent) {
+  	var r = elm.attachEvent('on' + evType, fn);  
+	  return r;  
+	} else {
+  	elm['on' + evType] = fn;
+	}
+}
+
+function insertIndices() {
+  pages = ["class", "file", "method"]
+  for (x in pages) { 
+    $(pages[x]).innerHTML += ajaxGet('fr_' + pages[x] + '_index.html').replace(/(href=")/g, '$1' + href_base);
+  }
+  /* mouseoverify method links */
+  links = $('method').getElementsByTagName('a');
+  for (var x = 0; x < links.length; x++) {
+    if (m = links[x].innerHTML.match(/(.*)\s\((.*)\)/)) {
+      links[x].innerHTML = m[1] + '<br>';
+      links[x].title = m[2];
+    }
+  }
+  /* this is stupid */
+  $('class').style.display = "block";
+  $('file').style.display = "block";
+  
+  /* has to be here because IE7 does not guarantee the onLoad callback order */
+  abbreviateIndicesInner(["class", "file"], 25, "a");
+  /* same, linkTitle() depends on the class link list */
+  linkTitle();
+}
+
+function abbreviateIndices() {
+  var ids = ["defined_in", "child_of", "includes", "requires", "method", "methods"];
+  abbreviateIndicesInner(ids, 25, 'a');
+  abbreviateIndicesInner(ids, 25, 'span');
+}
+
+function abbreviateIndicesInner(indices, amount, tag) {
+  for (var x = 0; x < indices.length; x++) { 
+    var the_index = $(indices[x]);
+    if (the_index) {
+      links = the_index.getElementsByTagName(tag);
+      for (var y = 0; y < links.length; y++) {
+        var link = links[y];
+        if (link.getElementsByTagName('span').length == 0 && link.getElementsByTagName('a').length == 0) {
+          // avoid nesting
+          link.innerHTML = link.innerHTML.replace(/<br>|\n/gi, '');
+          link.title = link.innerHTML;
+          link.innerHTML = abbreviate(link.innerHTML, amount) + '<br>';
+        }
+      }
+    }
+  }
+}
+
+function linkTitle() {
+  
+  /* grab the correct title element from the index */
+  var index_page = ajaxGet('index.html');
+  title_text = index_page.match(/<title>(.*)<\/title>/m)[1];
+  document.title = title_text + " - " + document.title;
+  var p = $('header').getElementsByTagName('p')[0]
+  if (p.innerHTML.match(/^\s*$/)) {
+    p.innerHTML = title_text;
+  } else {
+    p.innerHTML = title_text + ": " + p.innerHTML;
+  }
+  
+  /* set the link properly */
+  title_link = index_page.match(/<a\s+href="(.*?)"/)[1];
+  var element = $('title');
+  var item_type = "";
+  var item_name = "";
+  if (m = element.innerHTML.match(/(Class:|Module:|File:)\s*(.*)/)) {
+    item_type = m[1];
+    item_name = m[2];
+  } else {
+    item_name = element.innerHTML;
+  }
+  element.innerHTML = '<a href="' + href_base + title_link + '">' + item_type + " " + abbreviate(item_name, 45) + '</a>';
+  element.getElementsByTagName('a')[0].title = item_name
+  
+  /* breadcrumb navigation */
+  items = item_name.split("::");
+  items_new = item_name.split("::");
+  file_links = $('class').getElementsByTagName('a');
+  for (var x = 0; x < items.length - 1; x++ ){
+    var item = items[x];
+    link = ("/classes/" + items.slice(0,x).join("/") + "/" + item + ".html").replace('//', '/');
+    regex = new RegExp(RegExp.escape(link) + '$');
+    for (var y = 0; y < file_links.length; y++) {
+      if (file_links[y].href.match(regex)) {
+         items_new[x] = '<a href="' + href_base + link + '">' + item + '</a>';
+         break;
+      }
+    }  
+  }
+  $('item_name').innerHTML = item_type + ' ' + items_new.join(" :: ");
+}
+
+function abbreviate(s, size) {
+  while (s.length > size) {
+    var old_s = s;
+    s = s.replace(/\s|\n/mg, '');
+    s = s.replace(/([A-Z])[a-z]+/m, '$1');
+    if (!s || old_s == s) {
+      return "..." + s.substring(s.length - size, s.length);
+    }
+  }
+  return s;
+}
+
+function disableSubmit(event) {
+  var keyCode = event.keyCode ? event.keyCode : event.which ? event.which : event.charCode;
+  if (keyCode == 13) {
+    return false;
+  } else {
+    return true;
+  }
+}
+  
+function filterList(id, s, event) {
+  
+  /* some weak escaping */
+  s = s.replace(/[^\w\d\.\_\-\/\:\=\[\]\?\!]/g, '');
+  s = RegExp.escape(s);
+  
+  var show_all = false;
+  if (s.match(/^\s*$/)) {
+    show_all = true;
+  }
+  
+  links = $(id).getElementsByTagName('a')
+  regex = new RegExp(s, 'i');
+  
+  for (var x = 0; x < links.length; x++) {
+    var link = links[x];
+    if (show_all) {
+      link.style.display = 'inline';
+    } else {
+       if (link.innerHTML.match(regex)) {        
+         link.style.display = 'inline';
+       } else {
+         link.style.display = 'none';
+       }
+    }
+  }
+  return true;
+}
+
+RegExp.escape = function(text) {
+  if (!arguments.callee.sRE) {
+    var specials = ['/', '.', '*', '+', '?', '|', '(', ')', '[', ']', '{', '}', '\\'];
+    arguments.callee.sRE = new RegExp(
+      '(\\' + specials.join('|\\') + ')', 'g'
+    );
+  }
+  return text.replace(arguments.callee.sRE, '\\$1');
+}
+
+function hacks() {
+  // show the spacer if necessary, 
+  divs = document.getElementsByTagName('div');
+  for(var x = 0; x < divs.length; x++) {
+    if (divs[x].className && divs[x].className.match(/top/)) {
+      document.getElementById('spacer').style.display = 'block';
+    }
+  }
+  // remove extra colons from tables
+  tds = document.getElementsByTagName('td');
+  for(var x = 0; x < tds.length; x++) {
+    str = tds[x].innerHTML
+    if (str.charAt(str.length - 1) == ":") {
+      tds[x].innerHTML = str.slice(0, str.length - 1)
+    }
+  }
+}
+
+addEvent(window, 'load', insertIndices, false);
+addEvent(window, 'load', abbreviateIndices, false);
+addEvent(window, 'load', stripe, false);
+addEvent(window, 'load', highlightSymbols, false);
+addEvent(window, 'load', hacks, false);
+</script></head><body><div id="container"><div class="curve" id="preheader_curve_0"></div><div class="curve" id="preheader_curve_1"></div><div class="curve" id="preheader_curve_2"></div><div class="curve" id="preheader_curve_3"></div><div class="curve" id="preheader_curve_4"></div><div class="curve" id="preheader_curve_5"></div><div id="header"><p>
+</p><span><h1 id="title">
+Class: Sweeper
+</h1></span></div><div class="clear"></div><div id="left">
+<div class="navigation darker top" id="child_of"><h3>Child of</h3><span>
+
+Object
+</span></div>
+
+<div class="navigation darker top" id="defined_in"><h3>Defined in</h3>
+
+<a href="../files/lib/sweeper_rb.html">lib/sweeper.rb</a>
+
+</div>
+
+
+
+<div class="navigation top" id="methods"><h3>Methods</h3>
+
+
+<a href='#M000009'>
+binary<br/>
+</a>
+
+
+
+
+<a href='#M000010'>
+load<br/>
+</a>
+
+
+
+
+<a href='#M000005'>
+lookup<br/>
+</a>
+
+
+
+
+<a href='#M000006'>
+lookup_basic<br/>
+</a>
+
+
+
+
+<a href='#M000007'>
+lookup_genre<br/>
+</a>
+
+
+
+
+<a href='#M000011'>
+nearest_genre<br/>
+</a>
+
+
+
+
+<a href='#M000001'>
+new<br/>
+</a>
+
+
+
+
+<a href='#M000012'>
+normalize<br/>
+</a>
+
+
+
+
+<a href='#M000004'>
+read<br/>
+</a>
+
+
+
+
+<a href='#M000003'>
+recurse<br/>
+</a>
+
+
+
+
+<a href='#M000002'>
+run<br/>
+</a>
+
+
+
+
+<a href='#M000008'>
+write<br/>
+</a>
+
+
+</div>
+<div id="spacer"></div><div class="navigation darker index" id="class_wrapper"><div class="list_header"><h3>All classes</h3></div><div class="list_header_link"><a onclick="toggle('class'); toggleText('class_link'); return false;" href="#" id="class_link">Hide...</a></div><div class="clear"></div><div id="class"><form><label for="filter_class">Filter:&nbsp;&nbsp;</label><input type="text" onKeyUp="return filterList('class', this.value, event);" onKeyPress="return disableSubmit(event);" id="filter_class"></input></form></div></div><div class="navigation darker index" id="file_wrapper"><div class="list_header"><h3>All files</h3></div><div class="list_header_link"><a onclick="toggle('file'); toggleText('file_link'); return false;" href="#" id="file_link">Hide...</a></div><div class="clear"></div><div id="file"><form><label for="filter_file">Filter:&nbsp;&nbsp;</label><input type="text" onKeyUp="return filterList('file', this.value, event);" onKeyPress="return disableSubmit(event);" id="filter_file"></input></form></div></div><div class="navigation darker index" id="method_wrapper"><div class="list_header"><h3>All methods</h3></div><div class="list_header_link"><a onclick="toggle('method'); toggleText('method_link'); return false;" href="#" id="method_link">Show...</a></div><div class="clear"></div><div id="method"><form><label for="filter_method">Filter:&nbsp;&nbsp;</label><input type="text" onKeyUp="return filterList('method', this.value, event);" onKeyPress="return disableSubmit(event);" id="filter_method"></input></form></div></div></div><div id="content">
+<h1 id="item_name">Class: Sweeper</h1>
+
+
+
+
+
+<p></p>
+
+<h1>Child modules and classes</h1><p>Class <a href="Sweeper/Problem.html" class="link">Sweeper::Problem</a><br />
+</p>
+
+<h1>Constants</h1><p><table><tr><th>Name</th><th>Value</th></tr>
+<tr>
+<td class="highlight">BASIC_KEYS</td>
+
+<td class="normal">['artist', 'title', 'url']</td>
+
+
+
+</tr>
+<tr>
+<td class="highlight">GENRE_KEYS</td>
+
+<td class="normal">['genre', 'comment']</td>
+
+
+
+</tr>
+<tr>
+<td class="highlight">ALBUM_KEYS</td>
+
+<td class="normal">['album', 'track']</td>
+
+
+
+</tr>
+<tr>
+<td class="highlight">GENRES</td>
+
+<td class="normal">ID3Lib::Info::Genres</td>
+
+
+
+</tr>
+<tr>
+<td class="highlight">GENRE_COUNT</td>
+
+<td class="normal">10</td>
+
+
+
+</tr>
+<tr>
+<td class="highlight">DEFAULT_GENRE</td>
+
+<td class="normal">{'genre' =&gt; 'Other', 'comment' =&gt; 'other'}</td>
+
+
+
+</tr>
+</table></p>
+
+
+<h1>Attributes</h1><p><table><tr><th>Name</th><th>Read/write?</th></tr>
+<tr>
+<td class="highlight">options</td>
+
+
+
+
+<td class="normal">R</td>
+</tr>
+</table></p>
+
+
+<h1>Public Class Methods</h1>
+
+
+<a class="small" name="M000001"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000001'>
+
+
+new
+
+(options = {})
+
+</a>
+</h3>
+<p>
+Instantiate a <a href="Sweeper.html#M000001">new</a> <a
+href="Sweeper.html">Sweeper</a>. See <tt>bin/sweeper</tt> for
+<tt>options</tt> details.
+</p>
+
+<p class="source_link" id="M000001-show-link"><a onclick="toggle('M000001-source'); toggleText('M000001-link'); return false;" href="#" id="M000001-link">Show source...</a></p><div class="source" id="M000001-source"><pre>    <span class="ruby-comment cmt"># File lib/sweeper.rb, line 38</span>
+38:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">initialize</span>(<span class="ruby-identifier">options</span> = {})
+39:     <span class="ruby-ivar">@dir</span> = <span class="ruby-constant">File</span>.<span class="ruby-identifier">expand_path</span>(<span class="ruby-identifier">options</span>[<span class="ruby-value str">'dir'</span>] <span class="ruby-operator">||</span> <span class="ruby-constant">Dir</span>.<span class="ruby-identifier">pwd</span>)    
+40: 
+41:     <span class="ruby-keyword kw">if</span> <span class="ruby-constant">RUBY_PLATFORM</span> <span class="ruby-operator">=~</span> <span class="ruby-regexp re">/win32/</span>
+42:       <span class="ruby-ivar">@dir</span> = <span class="ruby-ivar">@dir</span>[<span class="ruby-value">2</span><span class="ruby-operator">..</span><span class="ruby-value">-1</span>] <span class="ruby-comment cmt"># Strip drive letter</span>
+43:       <span class="ruby-ivar">@null</span> = <span class="ruby-value str">&quot;nul&quot;</span>
+44:     <span class="ruby-keyword kw">else</span>
+45:       <span class="ruby-ivar">@null</span> = <span class="ruby-value str">&quot;/dev/null&quot;</span>
+46:     <span class="ruby-keyword kw">end</span>
+47:           
+48:     <span class="ruby-ivar">@options</span> = <span class="ruby-identifier">options</span>
+49:     <span class="ruby-ivar">@errf</span> = <span class="ruby-constant">Tempfile</span>.<span class="ruby-identifier">new</span>(<span class="ruby-value str">&quot;stderr&quot;</span>)
+50:     <span class="ruby-ivar">@match_cache</span> = {}    
+51:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+
+<h1>Public Instance Methods</h1>
+
+
+<a class="small" name="M000009"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000009'>
+
+
+binary
+
+()
+
+</a>
+</h3>
+<p>
+Returns the path to the fingerprinter <a
+href="Sweeper.html#M000009">binary</a> for this platform.
+</p>
+
+<p class="source_link" id="M000009-show-link"><a onclick="toggle('M000009-source'); toggleText('M000009-link'); return false;" href="#" id="M000009-link">Show source...</a></p><div class="source" id="M000009-source"><pre>     <span class="ruby-comment cmt"># File lib/sweeper.rb, line 249</span>
+249:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">binary</span>
+250:     <span class="ruby-identifier">here</span> = <span class="ruby-node">&quot;#{File.expand_path(File.dirname(__FILE__))}/../vendor&quot;</span>
+251:     <span class="ruby-ivar">@binary</span> <span class="ruby-operator">||=</span> <span class="ruby-keyword kw">case</span> <span class="ruby-constant">RUBY_PLATFORM</span>
+252:         <span class="ruby-keyword kw">when</span> <span class="ruby-regexp re">/win32/</span>
+253:           <span class="ruby-keyword kw">if</span> <span class="ruby-keyword kw">defined?</span>(<span class="ruby-constant">RUBYSCRIPT2EXE</span>)
+254:             <span class="ruby-identifier">e</span> = <span class="ruby-constant">RUBYSCRIPT2EXE</span>            
+255:             <span class="ruby-identifier">p</span> [<span class="ruby-identifier">e</span>.<span class="ruby-identifier">tempdir</span>, <span class="ruby-identifier">e</span>.<span class="ruby-identifier">userdir</span>, <span class="ruby-identifier">e</span>.<span class="ruby-identifier">exedir</span>, <span class="ruby-identifier">e</span>.<span class="ruby-identifier">appdir</span>] <span class="ruby-keyword kw">if</span> <span class="ruby-constant">ENV</span>[<span class="ruby-value str">'DEBUG'</span>]
+256:             <span class="ruby-node">&quot;#{e.appdir}/../bin/lastfmfpclient.exe&quot;</span>
+257:           <span class="ruby-keyword kw">else</span>
+258:             <span class="ruby-node">&quot;#{here}/lastfm.fpclient.beta2.win32/lastfmfpclient.exe&quot;</span>
+259:           <span class="ruby-keyword kw">end</span>
+260:         <span class="ruby-keyword kw">when</span> <span class="ruby-regexp re">/darwin/</span>
+261:           <span class="ruby-node">&quot;#{here}/lastfm.fpclient.beta2.OSX-intel/lastfmfpclient&quot;</span>
+262:         <span class="ruby-keyword kw">else</span> 
+263:           <span class="ruby-node">&quot;#{here}/lastfm.fpclient.beta2.linux-32/lastfmfpclient&quot;</span>
+264:         <span class="ruby-keyword kw">end</span>
+265:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000010"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000010'>
+
+
+load
+
+(filename)
+
+</a>
+</h3>
+<p>
+Loads metadata for an mp3 file. Looks for which ID3 version is already
+populated, instead of just the existence of frames.
+</p>
+
+<p class="source_link" id="M000010-show-link"><a onclick="toggle('M000010-source'); toggleText('M000010-link'); return false;" href="#" id="M000010-link">Show source...</a></p><div class="source" id="M000010-source"><pre>     <span class="ruby-comment cmt"># File lib/sweeper.rb, line 268</span>
+268:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">load</span>(<span class="ruby-identifier">filename</span>) 
+269:     <span class="ruby-constant">ID3Lib</span><span class="ruby-operator">::</span><span class="ruby-constant">Tag</span>.<span class="ruby-identifier">new</span>(<span class="ruby-identifier">filename</span>, <span class="ruby-constant">ID3Lib</span><span class="ruby-operator">::</span><span class="ruby-constant">V_ALL</span>)
+270:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000005"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000005'>
+
+
+lookup
+
+(filename, tags = {})
+
+</a>
+</h3>
+<p>
+Lookup all available remote metadata for an mp3 file. Accepts a pathname
+and an optional hash of existing tags. Returns a tag hash.
+</p>
+
+<p class="source_link" id="M000005-show-link"><a onclick="toggle('M000005-source'); toggleText('M000005-link'); return false;" href="#" id="M000005-link">Show source...</a></p><div class="source" id="M000005-source"><pre>     <span class="ruby-comment cmt"># File lib/sweeper.rb, line 133</span>
+133:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">lookup</span>(<span class="ruby-identifier">filename</span>, <span class="ruby-identifier">tags</span> = {})
+134:     <span class="ruby-identifier">tags</span> = <span class="ruby-identifier">tags</span>.<span class="ruby-identifier">dup</span>
+135:     <span class="ruby-identifier">updated</span> = {}
+136: 
+137:     <span class="ruby-comment cmt"># Are there any empty basic tags we need to lookup?</span>
+138:     <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">options</span>[<span class="ruby-value str">'force'</span>] <span class="ruby-keyword kw">or</span> 
+139:       (<span class="ruby-constant">BASIC_KEYS</span> <span class="ruby-operator">-</span> <span class="ruby-identifier">tags</span>.<span class="ruby-identifier">keys</span>).<span class="ruby-identifier">any?</span>
+140:       <span class="ruby-identifier">updated</span>.<span class="ruby-identifier">merge!</span>(<span class="ruby-identifier">lookup_basic</span>(<span class="ruby-identifier">filename</span>))
+141:     <span class="ruby-keyword kw">end</span>
+142: 
+143:     <span class="ruby-comment cmt"># Are there any empty genre tags we need to lookup?</span>
+144:     <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">options</span>[<span class="ruby-value str">'genre'</span>] <span class="ruby-keyword kw">and</span> 
+145:       (<span class="ruby-identifier">options</span>[<span class="ruby-value str">'force'</span>] <span class="ruby-keyword kw">or</span> <span class="ruby-identifier">options</span>[<span class="ruby-value str">'genre'</span>] <span class="ruby-operator">==</span> <span class="ruby-value str">'force'</span> <span class="ruby-keyword kw">or</span> (<span class="ruby-constant">GENRE_KEYS</span> <span class="ruby-operator">-</span> <span class="ruby-identifier">tags</span>.<span class="ruby-identifier">keys</span>).<span class="ruby-identifier">any?</span>)
+146:       <span class="ruby-identifier">updated</span>.<span class="ruby-identifier">merge!</span>(<span class="ruby-identifier">lookup_genre</span>(<span class="ruby-identifier">updated</span>.<span class="ruby-identifier">merge</span>(<span class="ruby-identifier">tags</span>)))
+147:     <span class="ruby-keyword kw">end</span>
+148: 
+149:     <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">options</span>[<span class="ruby-value str">'force'</span>]
+150:       <span class="ruby-comment cmt"># Force all remote tags.</span>
+151:       <span class="ruby-identifier">tags</span>.<span class="ruby-identifier">merge!</span>(<span class="ruby-identifier">updated</span>)      
+152:     <span class="ruby-keyword kw">elsif</span> <span class="ruby-identifier">options</span>[<span class="ruby-value str">'genre'</span>] <span class="ruby-operator">==</span> <span class="ruby-value str">'force'</span>
+153:       <span class="ruby-comment cmt"># Force remote genre tags only.</span>
+154:       <span class="ruby-identifier">tags</span>.<span class="ruby-identifier">merge!</span>(<span class="ruby-identifier">updated</span>.<span class="ruby-identifier">slice</span>(<span class="ruby-operator">*</span><span class="ruby-constant">GENRE_KEYS</span>))
+155:     <span class="ruby-keyword kw">end</span>
+156: 
+157:     <span class="ruby-comment cmt"># Merge back in existing tags.</span>
+158:     <span class="ruby-identifier">updated</span>.<span class="ruby-identifier">merge</span>(<span class="ruby-identifier">tags</span>)    
+159:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000006"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000006'>
+
+
+lookup_basic
+
+(filename)
+
+</a>
+</h3>
+<p>
+Lookup the basic metadata for an mp3 file. Accepts a pathname. Returns a
+tag hash.
+</p>
+
+<p class="source_link" id="M000006-show-link"><a onclick="toggle('M000006-source'); toggleText('M000006-link'); return false;" href="#" id="M000006-link">Show source...</a></p><div class="source" id="M000006-source"><pre>     <span class="ruby-comment cmt"># File lib/sweeper.rb, line 162</span>
+162:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">lookup_basic</span>(<span class="ruby-identifier">filename</span>)
+163:     <span class="ruby-constant">Dir</span>.<span class="ruby-identifier">chdir</span> <span class="ruby-constant">File</span>.<span class="ruby-identifier">dirname</span>(<span class="ruby-identifier">binary</span>) <span class="ruby-keyword kw">do</span>
+164:       <span class="ruby-identifier">cmd</span> = <span class="ruby-node">&quot;#{binary} #{filename.inspect} 2&gt; #{@null}&quot;</span>
+165:       <span class="ruby-identifier">p</span> <span class="ruby-identifier">cmd</span> <span class="ruby-keyword kw">if</span> <span class="ruby-constant">ENV</span>[<span class="ruby-value str">'DEBUG'</span>]
+166:       <span class="ruby-identifier">response</span> = <span class="ruby-node">`#{cmd}`</span>
+167:       <span class="ruby-identifier">object</span> = <span class="ruby-keyword kw">begin</span>
+168:         <span class="ruby-constant">XSD</span><span class="ruby-operator">::</span><span class="ruby-constant">Mapping</span>.<span class="ruby-identifier">xml2obj</span>(<span class="ruby-identifier">response</span>)
+169:       <span class="ruby-keyword kw">rescue</span> <span class="ruby-constant">Object</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">e</span>
+170:         <span class="ruby-identifier">raise</span> <span class="ruby-constant">Problem</span>, <span class="ruby-node">&quot;#{e.class.name} - #{e.message}&quot;</span>
+171:       <span class="ruby-keyword kw">end</span>              
+172:       <span class="ruby-identifier">raise</span> <span class="ruby-constant">Problem</span>, <span class="ruby-value str">&quot;Fingerprint failed&quot;</span> <span class="ruby-keyword kw">unless</span> <span class="ruby-identifier">object</span>
+173:       
+174:       <span class="ruby-identifier">tags</span> = {}
+175:       <span class="ruby-identifier">song</span> = <span class="ruby-constant">Array</span>(<span class="ruby-identifier">object</span>.<span class="ruby-identifier">track</span>).<span class="ruby-identifier">first</span>      
+176:       
+177:       <span class="ruby-constant">BASIC_KEYS</span>.<span class="ruby-identifier">each</span> <span class="ruby-keyword kw">do</span> <span class="ruby-operator">|</span><span class="ruby-identifier">key</span><span class="ruby-operator">|</span>
+178:         <span class="ruby-identifier">tags</span>[<span class="ruby-identifier">key</span>] = <span class="ruby-identifier">song</span>.<span class="ruby-identifier">send</span>(<span class="ruby-identifier">key</span>) <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">song</span>.<span class="ruby-identifier">respond_to?</span> <span class="ruby-identifier">key</span> 
+179:       <span class="ruby-keyword kw">end</span>
+180:       <span class="ruby-identifier">tags</span>
+181:     <span class="ruby-keyword kw">end</span>
+182:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000007"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000007'>
+
+
+lookup_genre
+
+(tags)
+
+</a>
+</h3>
+<p>
+Lookup the genre metadata for a set of basic metadata. Accepts a tag hash.
+Returns a genre tag hash.
+</p>
+
+<p class="source_link" id="M000007-show-link"><a onclick="toggle('M000007-source'); toggleText('M000007-link'); return false;" href="#" id="M000007-link">Show source...</a></p><div class="source" id="M000007-source"><pre>     <span class="ruby-comment cmt"># File lib/sweeper.rb, line 185</span>
+185:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">lookup_genre</span>(<span class="ruby-identifier">tags</span>)
+186:     <span class="ruby-keyword kw">return</span> <span class="ruby-constant">DEFAULT_GENRE</span> <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">tags</span>[<span class="ruby-value str">'artist'</span>].<span class="ruby-identifier">blank?</span>
+187:     
+188:     <span class="ruby-identifier">response</span> = <span class="ruby-keyword kw">begin</span> 
+189:       <span class="ruby-identifier">open</span>(<span class="ruby-node">&quot;http://ws.audioscrobbler.com/1.0/artist/#{URI.encode(tags['artist'])}/toptags.xml&quot;</span>).<span class="ruby-identifier">read</span>
+190:     <span class="ruby-keyword kw">rescue</span> <span class="ruby-constant">Object</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">e</span>
+191:       <span class="ruby-identifier">puts</span> <span class="ruby-node">&quot;Open-URI error: #{e.class.name} - #{e.message}&quot;</span> <span class="ruby-keyword kw">if</span> <span class="ruby-constant">ENV</span>[<span class="ruby-value str">'DEBUG'</span>]
+192:       <span class="ruby-keyword kw">return</span> <span class="ruby-constant">DEFAULT_GENRE</span>
+193:     <span class="ruby-keyword kw">end</span>
+194:     
+195:     <span class="ruby-keyword kw">begin</span>
+196:       <span class="ruby-identifier">object</span> = <span class="ruby-constant">XSD</span><span class="ruby-operator">::</span><span class="ruby-constant">Mapping</span>.<span class="ruby-identifier">xml2obj</span>(<span class="ruby-identifier">response</span>)
+197:     <span class="ruby-keyword kw">rescue</span> <span class="ruby-constant">Object</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">e</span>
+198:       <span class="ruby-identifier">puts</span> <span class="ruby-node">&quot;XSD error: #{e.class.name} - #{e.message}&quot;</span> <span class="ruby-keyword kw">if</span> <span class="ruby-constant">ENV</span>[<span class="ruby-value str">'DEBUG'</span>]
+199:       <span class="ruby-keyword kw">return</span> <span class="ruby-constant">DEFAULT_GENRE</span>
+200:     <span class="ruby-keyword kw">end</span>    
+201:      
+202:     <span class="ruby-keyword kw">return</span> <span class="ruby-constant">DEFAULT_GENRE</span> <span class="ruby-keyword kw">if</span> <span class="ruby-operator">!</span><span class="ruby-identifier">object</span>.<span class="ruby-identifier">respond_to?</span> <span class="ruby-identifier">:tag</span>
+203: 
+204:     <span class="ruby-identifier">genres</span> = <span class="ruby-constant">Array</span>(<span class="ruby-identifier">object</span>.<span class="ruby-identifier">tag</span>)[<span class="ruby-value">0</span><span class="ruby-operator">..</span>(<span class="ruby-constant">GENRE_COUNT</span> <span class="ruby-operator">-</span> <span class="ruby-value">1</span>)].<span class="ruby-identifier">map</span>(<span class="ruby-operator">&amp;</span><span class="ruby-identifier">:name</span>)
+205:     <span class="ruby-keyword kw">return</span> <span class="ruby-constant">DEFAULT_GENRE</span> <span class="ruby-keyword kw">if</span> <span class="ruby-operator">!</span><span class="ruby-identifier">genres</span>.<span class="ruby-identifier">any?</span>
+206:     
+207:     <span class="ruby-identifier">primary</span> = <span class="ruby-keyword kw">nil</span>
+208:     <span class="ruby-identifier">genres</span>.<span class="ruby-identifier">each_with_index</span> <span class="ruby-keyword kw">do</span> <span class="ruby-operator">|</span><span class="ruby-identifier">this</span>, <span class="ruby-identifier">index</span><span class="ruby-operator">|</span>
+209:       <span class="ruby-identifier">match</span>, <span class="ruby-identifier">weight</span> = <span class="ruby-identifier">nearest_genre</span>(<span class="ruby-identifier">this</span>)
+210:       <span class="ruby-comment cmt"># Bias slightly towards higher tagging counts</span>
+211:       <span class="ruby-identifier">weight</span> <span class="ruby-operator">+=</span> ((<span class="ruby-constant">GENRE_COUNT</span> <span class="ruby-operator">-</span> <span class="ruby-identifier">index</span>) <span class="ruby-operator">/</span> <span class="ruby-constant">GENRE_COUNT</span> <span class="ruby-operator">/</span> <span class="ruby-value">4.0</span>)
+212: 
+213:       <span class="ruby-keyword kw">if</span> [<span class="ruby-value str">'Rock'</span>, <span class="ruby-value str">'Pop'</span>, <span class="ruby-value str">'Rap'</span>].<span class="ruby-identifier">include?</span> <span class="ruby-identifier">match</span>
+214:         <span class="ruby-comment cmt"># Penalize useless genres</span>
+215:         <span class="ruby-identifier">weight</span> = <span class="ruby-identifier">weight</span> <span class="ruby-operator">/</span> <span class="ruby-value">3.0</span>
+216:       <span class="ruby-keyword kw">end</span>
+217:             
+218:       <span class="ruby-identifier">p</span> [<span class="ruby-identifier">weight</span>, <span class="ruby-identifier">match</span>] <span class="ruby-keyword kw">if</span> <span class="ruby-constant">ENV</span>[<span class="ruby-value str">'DEBUG'</span>]
+219:       
+220:       <span class="ruby-keyword kw">if</span> <span class="ruby-operator">!</span><span class="ruby-identifier">primary</span> <span class="ruby-keyword kw">or</span> <span class="ruby-identifier">primary</span>.<span class="ruby-identifier">first</span> <span class="ruby-operator">&lt;</span> <span class="ruby-identifier">weight</span>
+221:         <span class="ruby-identifier">primary</span> = [<span class="ruby-identifier">weight</span>, <span class="ruby-identifier">match</span>]
+222:       <span class="ruby-keyword kw">end</span>
+223:     <span class="ruby-keyword kw">end</span>
+224:     
+225:     {<span class="ruby-value str">'genre'</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">primary</span>.<span class="ruby-identifier">last</span>, <span class="ruby-value str">'comment'</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">genres</span>.<span class="ruby-identifier">join</span>(<span class="ruby-value str">&quot;, &quot;</span>)}
+226:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000011"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000011'>
+
+
+nearest_genre
+
+(string)
+
+</a>
+</h3>
+
+<p class="source_link" id="M000011-show-link"><a onclick="toggle('M000011-source'); toggleText('M000011-link'); return false;" href="#" id="M000011-link">Show source...</a></p><div class="source" id="M000011-source"><pre>     <span class="ruby-comment cmt"># File lib/sweeper.rb, line 272</span>
+272:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">nearest_genre</span>(<span class="ruby-identifier">string</span>)
+273:     <span class="ruby-ivar">@match_cache</span>[<span class="ruby-identifier">string</span>] <span class="ruby-operator">||=</span> <span class="ruby-keyword kw">begin</span>
+274:       <span class="ruby-identifier">results</span> = {}
+275:       <span class="ruby-constant">GENRES</span>.<span class="ruby-identifier">each</span> <span class="ruby-keyword kw">do</span> <span class="ruby-operator">|</span><span class="ruby-identifier">genre</span><span class="ruby-operator">|</span>
+276:         <span class="ruby-identifier">results</span>[<span class="ruby-constant">Text</span><span class="ruby-operator">::</span><span class="ruby-constant">Levenshtein</span>.<span class="ruby-identifier">distance</span>(<span class="ruby-identifier">genre</span>, <span class="ruby-identifier">string</span>)] = <span class="ruby-identifier">genre</span>
+277:       <span class="ruby-keyword kw">end</span>    
+278:       <span class="ruby-identifier">min</span> = <span class="ruby-identifier">results</span>.<span class="ruby-identifier">keys</span>.<span class="ruby-identifier">min</span>
+279:       <span class="ruby-identifier">match</span> = <span class="ruby-identifier">results</span>[<span class="ruby-identifier">min</span>]
+280:       
+281:       [<span class="ruby-identifier">match</span>, <span class="ruby-identifier">normalize</span>(<span class="ruby-identifier">match</span>, <span class="ruby-identifier">string</span>, <span class="ruby-identifier">min</span>)]
+282:     <span class="ruby-keyword kw">end</span>    
+283:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000012"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000012'>
+
+
+normalize
+
+(genre, string, weight)
+
+</a>
+</h3>
+
+<p class="source_link" id="M000012-show-link"><a onclick="toggle('M000012-source'); toggleText('M000012-link'); return false;" href="#" id="M000012-link">Show source...</a></p><div class="source" id="M000012-source"><pre>     <span class="ruby-comment cmt"># File lib/sweeper.rb, line 285</span>
+285:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">normalize</span>(<span class="ruby-identifier">genre</span>, <span class="ruby-identifier">string</span>, <span class="ruby-identifier">weight</span>)
+286:     <span class="ruby-comment cmt"># XXX Algorithm may not be right</span>
+287:     <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">weight</span> <span class="ruby-operator">==</span> <span class="ruby-value">0</span>
+288:       <span class="ruby-value">1.0</span>
+289:     <span class="ruby-keyword kw">elsif</span> <span class="ruby-identifier">weight</span> <span class="ruby-operator">&gt;=</span> <span class="ruby-identifier">genre</span>.<span class="ruby-identifier">size</span>
+290:       <span class="ruby-value">0</span><span class="ruby-value">.0</span>
+291:     <span class="ruby-keyword kw">elsif</span> <span class="ruby-identifier">genre</span>.<span class="ruby-identifier">size</span> <span class="ruby-operator">&gt;=</span> <span class="ruby-identifier">string</span>.<span class="ruby-identifier">size</span>
+292:       <span class="ruby-value">1.0</span> <span class="ruby-operator">-</span> (<span class="ruby-identifier">weight</span> <span class="ruby-operator">/</span> <span class="ruby-identifier">genre</span>.<span class="ruby-identifier">size</span>.<span class="ruby-identifier">to_f</span>)
+293:     <span class="ruby-keyword kw">else</span>
+294:       <span class="ruby-value">1.0</span> <span class="ruby-operator">-</span> (<span class="ruby-identifier">weight</span> <span class="ruby-operator">/</span> <span class="ruby-identifier">string</span>.<span class="ruby-identifier">size</span>.<span class="ruby-identifier">to_f</span>)
+295:     <span class="ruby-keyword kw">end</span>    
+296:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000004"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000004'>
+
+
+read
+
+(filename)
+
+</a>
+</h3>
+<p>
+Read tags from an mp3 file. Returns a tag hash.
+</p>
+
+<p class="source_link" id="M000004-show-link"><a onclick="toggle('M000004-source'); toggleText('M000004-link'); return false;" href="#" id="M000004-link">Show source...</a></p><div class="source" id="M000004-source"><pre>     <span class="ruby-comment cmt"># File lib/sweeper.rb, line 115</span>
+115:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">read</span>(<span class="ruby-identifier">filename</span>)
+116:     <span class="ruby-identifier">tags</span> = {}
+117:     <span class="ruby-identifier">song</span> = <span class="ruby-identifier">load</span>(<span class="ruby-identifier">filename</span>)
+118:     
+119:     (<span class="ruby-constant">BASIC_KEYS</span> <span class="ruby-operator">+</span> <span class="ruby-constant">GENRE_KEYS</span>).<span class="ruby-identifier">each</span> <span class="ruby-keyword kw">do</span> <span class="ruby-operator">|</span><span class="ruby-identifier">key</span><span class="ruby-operator">|</span>      
+120:       <span class="ruby-identifier">tags</span>[<span class="ruby-identifier">key</span>] = <span class="ruby-identifier">song</span>.<span class="ruby-identifier">send</span>(<span class="ruby-identifier">key</span>) <span class="ruby-keyword kw">if</span> <span class="ruby-operator">!</span><span class="ruby-identifier">song</span>.<span class="ruby-identifier">send</span>(<span class="ruby-identifier">key</span>).<span class="ruby-identifier">blank?</span>
+121:     <span class="ruby-keyword kw">end</span>
+122:     
+123:     <span class="ruby-comment cmt"># Change numeric genres into TCON strings</span>
+124:     <span class="ruby-comment cmt"># XXX Might not work well</span>
+125:     <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">tags</span>[<span class="ruby-value str">'genre'</span>] <span class="ruby-operator">=~</span> <span class="ruby-regexp re">/(\d+)/</span>
+126:       <span class="ruby-identifier">tags</span>[<span class="ruby-value str">'genre'</span>] = <span class="ruby-constant">GENRES</span>[<span class="ruby-identifier">$1</span>.<span class="ruby-identifier">to_i</span>]
+127:     <span class="ruby-keyword kw">end</span>
+128:     
+129:     <span class="ruby-identifier">tags</span>
+130:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000003"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000003'>
+
+
+recurse
+
+(dir)
+
+</a>
+</h3>
+<p>
+Recurse one directory, reading, looking up, and writing each file, if
+appropriate. Accepts a directory path.
+</p>
+
+<p class="source_link" id="M000003-show-link"><a onclick="toggle('M000003-source'); toggleText('M000003-link'); return false;" href="#" id="M000003-link">Show source...</a></p><div class="source" id="M000003-source"><pre>     <span class="ruby-comment cmt"># File lib/sweeper.rb, line 78</span>
+ 78:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">recurse</span>(<span class="ruby-identifier">dir</span>)
+ 79:     <span class="ruby-comment cmt"># Hackishly avoid problems with metacharacters in the Dir[] string.</span>
+ 80:     <span class="ruby-identifier">dir</span> = <span class="ruby-identifier">dir</span>.<span class="ruby-identifier">gsub</span>(<span class="ruby-regexp re">/[^\s\w\.\/\\\-]/</span>, <span class="ruby-value str">'?'</span>)
+ 81:     <span class="ruby-identifier">p</span> <span class="ruby-identifier">dir</span> <span class="ruby-keyword kw">if</span> <span class="ruby-constant">ENV</span>[<span class="ruby-value str">'DEBUG'</span>]
+ 82:     
+ 83:     <span class="ruby-constant">Dir</span>[<span class="ruby-node">&quot;#{dir}/*&quot;</span>].<span class="ruby-identifier">each</span> <span class="ruby-keyword kw">do</span> <span class="ruby-operator">|</span><span class="ruby-identifier">filename</span><span class="ruby-operator">|</span>
+ 84:       <span class="ruby-keyword kw">if</span> <span class="ruby-constant">File</span>.<span class="ruby-identifier">directory?</span> <span class="ruby-identifier">filename</span> <span class="ruby-keyword kw">and</span> <span class="ruby-identifier">options</span>[<span class="ruby-value str">'recursive'</span>]
+ 85:         <span class="ruby-identifier">recurse</span>(<span class="ruby-identifier">filename</span>)
+ 86:       <span class="ruby-keyword kw">elsif</span> <span class="ruby-constant">File</span>.<span class="ruby-identifier">extname</span>(<span class="ruby-identifier">filename</span>) <span class="ruby-operator">=~</span> <span class="ruby-regexp re">/\.mp3$/i</span>
+ 87:         <span class="ruby-ivar">@read</span> <span class="ruby-operator">+=</span> <span class="ruby-value">1</span>
+ 88:         <span class="ruby-identifier">tries</span> = <span class="ruby-value">0</span>
+ 89:         <span class="ruby-keyword kw">begin</span>
+ 90:           <span class="ruby-identifier">current</span> = <span class="ruby-identifier">read</span>(<span class="ruby-identifier">filename</span>)  
+ 91:           <span class="ruby-identifier">updated</span> = <span class="ruby-identifier">lookup</span>(<span class="ruby-identifier">filename</span>, <span class="ruby-identifier">current</span>)
+ 92:           
+ 93:           <span class="ruby-keyword kw">if</span> <span class="ruby-constant">ENV</span>[<span class="ruby-value str">'DEBUG'</span>]
+ 94:             <span class="ruby-identifier">p</span> <span class="ruby-identifier">current</span>, <span class="ruby-identifier">updated</span>
+ 95:           <span class="ruby-keyword kw">end</span>
+ 96: 
+ 97:           <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">updated</span> <span class="ruby-operator">!=</span> <span class="ruby-identifier">current</span> 
+ 98:             <span class="ruby-comment cmt"># Don't bother updating identical metadata.</span>
+ 99:             <span class="ruby-identifier">write</span>(<span class="ruby-identifier">filename</span>, <span class="ruby-identifier">updated</span>)
+100:             <span class="ruby-ivar">@updated</span> <span class="ruby-operator">+=</span> <span class="ruby-value">1</span>
+101:           <span class="ruby-keyword kw">else</span>
+102:             <span class="ruby-identifier">puts</span> <span class="ruby-node">&quot;Unchanged: #{File.basename(filename)}&quot;</span>
+103:           <span class="ruby-keyword kw">end</span>
+104:           
+105:         <span class="ruby-keyword kw">rescue</span> <span class="ruby-constant">Problem</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">e</span>          
+106:           <span class="ruby-identifier">tries</span> <span class="ruby-operator">+=</span> <span class="ruby-value">1</span> <span class="ruby-keyword kw">and</span> <span class="ruby-keyword kw">retry</span> <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">tries</span> <span class="ruby-operator">&lt;</span> <span class="ruby-value">2</span>
+107:           <span class="ruby-identifier">puts</span> <span class="ruby-node">&quot;Skipped (#{e.message.gsub(&quot;\n&quot;, &quot; &quot;)}): #{File.basename(filename)}&quot;</span>
+108:           <span class="ruby-ivar">@failed</span> <span class="ruby-operator">+=</span> <span class="ruby-value">1</span>
+109:         <span class="ruby-keyword kw">end</span>
+110:       <span class="ruby-keyword kw">end</span>
+111:     <span class="ruby-keyword kw">end</span>  
+112:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000002"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000002'>
+
+
+run
+
+()
+
+</a>
+</h3>
+<p>
+Run the <a href="Sweeper.html">Sweeper</a> according to the
+<tt>options</tt>.
+</p>
+
+<p class="source_link" id="M000002-show-link"><a onclick="toggle('M000002-source'); toggleText('M000002-link'); return false;" href="#" id="M000002-link">Show source...</a></p><div class="source" id="M000002-source"><pre>    <span class="ruby-comment cmt"># File lib/sweeper.rb, line 54</span>
+54:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">run</span>      
+55:     <span class="ruby-ivar">@read</span> = <span class="ruby-value">0</span>
+56:     <span class="ruby-ivar">@updated</span> = <span class="ruby-value">0</span>
+57:     <span class="ruby-ivar">@failed</span> = <span class="ruby-value">0</span>
+58: 
+59:     <span class="ruby-constant">Kernel</span>.<span class="ruby-identifier">at_exit</span> <span class="ruby-keyword kw">do</span>
+60:       <span class="ruby-keyword kw">if</span> <span class="ruby-ivar">@read</span> <span class="ruby-operator">==</span> <span class="ruby-value">0</span>
+61:         <span class="ruby-identifier">puts</span> <span class="ruby-value str">&quot;No mp3 files found. Maybe you meant --recursive?&quot;</span>
+62:       <span class="ruby-keyword kw">else</span>
+63:         <span class="ruby-identifier">puts</span> <span class="ruby-node">&quot;Read: #{@read}\nUpdated: #{@updated}\nFailed: #{@failed}&quot;</span>
+64:       <span class="ruby-keyword kw">end</span>
+65:     <span class="ruby-keyword kw">end</span>      
+66:   
+67:     <span class="ruby-keyword kw">begin</span>
+68:       <span class="ruby-identifier">recurse</span>(<span class="ruby-ivar">@dir</span>)
+69:     <span class="ruby-keyword kw">rescue</span> <span class="ruby-constant">Object</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">e</span>
+70:       <span class="ruby-identifier">puts</span> <span class="ruby-node">&quot;Unknown error: #{e.inspect}&quot;</span>
+71:       <span class="ruby-constant">ENV</span>[<span class="ruby-value str">'DEBUG'</span>] <span class="ruby-operator">?</span> <span class="ruby-identifier">raise</span> <span class="ruby-operator">:</span> <span class="ruby-identifier">exit</span>
+72:     <span class="ruby-keyword kw">end</span>
+73:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000008"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000008'>
+
+
+write
+
+(filename, tags)
+
+</a>
+</h3>
+<p>
+Write tags to an mp3 file. Accepts a pathname and a tag hash.
+</p>
+
+<p class="source_link" id="M000008-show-link"><a onclick="toggle('M000008-source'); toggleText('M000008-link'); return false;" href="#" id="M000008-link">Show source...</a></p><div class="source" id="M000008-source"><pre>     <span class="ruby-comment cmt"># File lib/sweeper.rb, line 229</span>
+229:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">write</span>(<span class="ruby-identifier">filename</span>, <span class="ruby-identifier">tags</span>)
+230:     <span class="ruby-keyword kw">return</span> <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">tags</span>.<span class="ruby-identifier">empty?</span>
+231:     <span class="ruby-identifier">puts</span> <span class="ruby-node">&quot;Updated: #{File.basename(filename)}&quot;</span>
+232:     
+233:     <span class="ruby-identifier">song</span> = <span class="ruby-identifier">load</span>(<span class="ruby-identifier">filename</span>)
+234:     
+235:     <span class="ruby-identifier">tags</span>.<span class="ruby-identifier">each</span> <span class="ruby-keyword kw">do</span> <span class="ruby-operator">|</span><span class="ruby-identifier">key</span>, <span class="ruby-identifier">value</span><span class="ruby-operator">|</span>
+236:       <span class="ruby-identifier">song</span>.<span class="ruby-identifier">send</span>(<span class="ruby-node">&quot;#{key}=&quot;</span>, <span class="ruby-identifier">value</span>)
+237:       <span class="ruby-identifier">puts</span> <span class="ruby-node">&quot;  #{key.capitalize}: #{value}&quot;</span>
+238:     <span class="ruby-keyword kw">end</span>
+239:     <span class="ruby-constant">ALBUM_KEYS</span>.<span class="ruby-identifier">each</span> <span class="ruby-keyword kw">do</span> <span class="ruby-operator">|</span><span class="ruby-identifier">key</span><span class="ruby-operator">|</span>
+240:       <span class="ruby-identifier">puts</span> <span class="ruby-node">&quot;  #{key.capitalize}: #{song.send(key)}&quot;</span>
+241:     <span class="ruby-keyword kw">end</span>
+242:     
+243:     <span class="ruby-keyword kw">unless</span> <span class="ruby-identifier">options</span>[<span class="ruby-value str">'dry-run'</span>]
+244:       <span class="ruby-identifier">song</span>.<span class="ruby-identifier">update!</span>(<span class="ruby-constant">ID3Lib</span><span class="ruby-operator">::</span><span class="ruby-constant">V2</span>) 
+245:     <span class="ruby-keyword kw">end</span>
+246:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+
+
+
+
+</div><div class="clear" id="footer">Generated on Apr 18, 2008 / Allison 2 &copy; 2008 <a href="http://cloudbur.st">Cloudburst, LLC</a></div></div><script src="http://feeds.feedburner.com/~s/snax" type="text/javascript" charset="utf-8"></script></body></html>

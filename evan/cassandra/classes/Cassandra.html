@@ -1,0 +1,2425 @@
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head><meta content="text/html; charset=utf-8" http-equiv="Content-Type"/><title>Class: Cassandra</title><link type="text/css" href=".././rdoc-style.css" media="screen" rel="stylesheet"/><script type="text/javascript">
+// Allison template
+// Copyright 2007, 2008 Cloudburst, LLC. Licensed under the AFL 3. See the included LICENSE file.
+
+var href_base = '.././rdoc-style.css'.replace(/(.*\/).*/, '$1'); // inline js is good for something  
+
+function $(id) {
+    if (document.getElementById)
+      elem = document.getElementById(id);
+    else if ( document.all )
+      elem = eval("document.all." + id);
+    else
+      return false;
+    return elem;
+}
+
+  function toggle(id) {
+    elem = $(id);
+    elemStyle = elem.style;   
+    if (elemStyle.display == "block") {
+      elemStyle.display = "none"
+    } else {
+      elemStyle.display = "block"
+    }
+    return true;
+  }
+
+  function toggleText(id) {
+    elem = $(id)
+    if (m = elem.innerHTML.match(/(Hide)(.*)/)) {
+      elem.innerHTML = "Show" + m[2];
+    } else if (m = elem.innerHTML.match(/(Show)(.*)/)) {
+      elem.innerHTML = "Hide" + m[2];
+    }
+    return true;
+  }
+
+function span(s, klass) {
+  return '<span class="' + klass + '">' + s + '</span>';
+}
+  
+function highlightSymbols() {
+  pres = document.getElementsByTagName('pre');
+  for(var i = 0; i < pres.length; i++) {
+    pre = pres[i];
+    spans = pre.getElementsByTagName('span');
+    for(var k = 0; k < spans.length; k++) {
+      span = spans[k];
+      if (span.className.match(/ruby-identifier/)) {
+        if (span.innerHTML.match(/^:/)) {
+          span.className += " ruby-symbol";
+        }
+      }
+    }
+  }
+}
+
+ function hasClass(obj) {
+     var result = false;
+     if (obj.getAttributeNode("class") != null) {
+         result = obj.getAttributeNode("class").value;
+     }
+     return result;
+  }   
+
+ function stripe() {
+    var even = true;
+    var color = "#e4ebed";
+    var tables = document.getElementsByTagName('table');
+    if (tables.length == 0) { return; }
+    for (var h = 0; h < tables.length; h++) {
+        var trs = tables[h].getElementsByTagName("tr");
+        for (var i = 0; i < trs.length; i++) {
+          var tds = trs[i].getElementsByTagName("td");
+            for (var j = 0; j < tds.length; j++) {       
+              if (hasClass(tds[j]) != "first") {                
+              var mytd = tds[j];
+              if (even) {
+                mytd.style.backgroundColor = color;
+              }         
+            }
+          }
+          even =  ! even;
+      }
+    }
+  }
+  
+function ajaxGet(url) {
+  url = (href_base + url).replace('/./', '/')
+  var req = false;
+
+  if (window.ActiveXObject) {
+    try {
+      // stupid hack because IE7 disables local Ajax with the native xmlhttprequest object
+      // for security purposes. Yet ActiveX still works. Thanks, Microsoft. I hate you. Die.
+      req = new ActiveXObject("MSXML2.XMLHTTP.3.0");
+    } catch (e) {
+      try {
+        /* IE 6 and maybe 5, don't know, don't care */
+        req = new ActiveXObject("Msxml2.XMLHTTP");
+      } catch (e) {
+        try {
+          req = new ActiveXObject("Microsoft.XMLHTTP");
+        } catch (e) {
+          req = false;
+        }
+      }
+    }
+  }
+    
+  /* real browsers */
+  if (!req && window.XMLHttpRequest) {
+    try {
+      req = new XMLHttpRequest();
+    } catch (e) {
+      req = false;
+    }
+  } 
+  
+  if (req) {
+    req.open('GET', url, false);
+    req.send(null);
+    return req.responseText;
+  } else {
+    return "Ajax error";  
+  }
+}
+
+
+function addEvent(elm, evType, fn, useCapture) {
+	if (elm.addEventListener) {
+	  elm.addEventListener(evType, fn, useCapture);  
+  	return true;
+	} else if (elm.attachEvent) {
+  	var r = elm.attachEvent('on' + evType, fn);  
+	  return r;  
+	} else {
+  	elm['on' + evType] = fn;
+	}
+}
+
+function insertIndices() {
+  pages = ["class", "file", "method"]
+  for (x in pages) { 
+    $(pages[x]).innerHTML += ajaxGet('fr_' + pages[x] + '_index.html').replace(/(href=")/g, '$1' + href_base);
+  }
+  /* mouseoverify method links */
+  links = $('method').getElementsByTagName('a');
+  for (var x = 0; x < links.length; x++) {
+    if (m = links[x].innerHTML.match(/(.*)\s\((.*)\)/)) {
+      links[x].innerHTML = m[1] + '<br>';
+      links[x].title = m[2];
+    }
+  }
+  /* this is stupid */
+  $('class').style.display = "block";
+  $('file').style.display = "block";
+  
+  /* has to be here because IE7 does not guarantee the onLoad callback order */
+  abbreviateIndicesInner(["class", "file"], 25, "a");
+  /* same, linkTitle() depends on the class link list */
+  linkTitle();
+}
+
+function abbreviateIndices() {
+  var ids = ["defined_in", "child_of", "includes", "requires", "method", "methods"];
+  abbreviateIndicesInner(ids, 25, 'a');
+  abbreviateIndicesInner(ids, 25, 'span');
+}
+
+function abbreviateIndicesInner(indices, amount, tag) {
+  for (var x = 0; x < indices.length; x++) { 
+    var the_index = $(indices[x]);
+    if (the_index) {
+      links = the_index.getElementsByTagName(tag);
+      for (var y = 0; y < links.length; y++) {
+        var link = links[y];
+        if (link.getElementsByTagName('span').length == 0 && link.getElementsByTagName('a').length == 0) {
+          // avoid nesting
+          link.innerHTML = link.innerHTML.replace(/<br>|\n/gi, '');
+          link.title = link.innerHTML;
+          link.innerHTML = abbreviate(link.innerHTML, amount) + '<br>';
+        }
+      }
+    }
+  }
+}
+
+function linkTitle() {
+  
+  /* grab the correct title element from the index */
+  var index_page = ajaxGet('index.html');
+  title_text = index_page.match(/<title>(.*)<\/title>/m)[1];
+  document.title = title_text + " - " + document.title;
+  var p = $('header').getElementsByTagName('p')[0]
+  if (p.innerHTML.match(/^\s*$/)) {
+    p.innerHTML = title_text;
+  } else {
+    p.innerHTML = title_text + ": " + p.innerHTML;
+  }
+  
+  /* set the link properly */
+  title_link = index_page.match(/<a\s+href="(.*?)"/)[1];
+  var element = $('title');
+  var item_type = "";
+  var item_name = "";
+  if (m = element.innerHTML.match(/(Class:|Module:|File:)\s*(.*)/)) {
+    item_type = m[1];
+    item_name = m[2];
+  } else {
+    item_name = element.innerHTML;
+  }
+  element.innerHTML = '<a href="' + href_base + title_link + '">' + item_type + " " + abbreviate(item_name, 45) + '</a>';
+  element.getElementsByTagName('a')[0].title = item_name
+  
+  /* breadcrumb navigation */
+  items = item_name.split("::");
+  items_new = item_name.split("::");
+  file_links = $('class').getElementsByTagName('a');
+  for (var x = 0; x < items.length - 1; x++ ){
+    var item = items[x];
+    link = ("/classes/" + items.slice(0,x).join("/") + "/" + item + ".html").replace('//', '/');
+    regex = new RegExp(RegExp.escape(link) + '$');
+    for (var y = 0; y < file_links.length; y++) {
+      if (file_links[y].href.match(regex)) {
+         items_new[x] = '<a href="' + href_base + link + '">' + item + '</a>';
+         break;
+      }
+    }  
+  }
+  $('item_name').innerHTML = item_type + ' ' + items_new.join(" :: ");
+}
+
+function abbreviate(s, size) {
+  while (s.length > size) {
+    var old_s = s;
+    s = s.replace(/\s|\n/mg, '');
+    s = s.replace(/([A-Z])[a-z]+/m, '$1');
+    if (!s || old_s == s) {
+      return "..." + s.substring(s.length - size, s.length);
+    }
+  }
+  return s;
+}
+
+function disableSubmit(event) {
+  var keyCode = event.keyCode ? event.keyCode : event.which ? event.which : event.charCode;
+  if (keyCode == 13) {
+    return false;
+  } else {
+    return true;
+  }
+}
+  
+function filterList(id, s, event) {
+  
+  /* some weak escaping */
+  s = s.replace(/[^\w\d\.\_\-\/\:\=\[\]\?\!]/g, '');
+  s = RegExp.escape(s);
+  
+  var show_all = false;
+  if (s.match(/^\s*$/)) {
+    show_all = true;
+  }
+  
+  links = $(id).getElementsByTagName('a')
+  regex = new RegExp(s, 'i');
+  
+  for (var x = 0; x < links.length; x++) {
+    var link = links[x];
+    if (show_all) {
+      link.style.display = 'inline';
+    } else {
+       if (link.innerHTML.match(regex)) {        
+         link.style.display = 'inline';
+       } else {
+         link.style.display = 'none';
+       }
+    }
+  }
+  return true;
+}
+
+RegExp.escape = function(text) {
+  if (!arguments.callee.sRE) {
+    var specials = ['/', '.', '*', '+', '?', '|', '(', ')', '[', ']', '{', '}', '\\'];
+    arguments.callee.sRE = new RegExp(
+      '(\\' + specials.join('|\\') + ')', 'g'
+    );
+  }
+  return text.replace(arguments.callee.sRE, '\\$1');
+}
+
+function hacks() {
+  // show the spacer if necessary, 
+  divs = document.getElementsByTagName('div');
+  for(var x = 0; x < divs.length; x++) {
+    if (divs[x].className && divs[x].className.match(/top/)) {
+      document.getElementById('spacer').style.display = 'block';
+    }
+  }
+  // remove extra colons from tables
+  tds = document.getElementsByTagName('td');
+  for(var x = 0; x < tds.length; x++) {
+    str = tds[x].innerHTML
+    if (str.charAt(str.length - 1) == ":") {
+      tds[x].innerHTML = str.slice(0, str.length - 1)
+    }
+  }
+}
+
+addEvent(window, 'load', insertIndices, false);
+addEvent(window, 'load', abbreviateIndices, false);
+addEvent(window, 'load', stripe, false);
+addEvent(window, 'load', highlightSymbols, false);
+addEvent(window, 'load', hacks, false);
+</script></head><body><div id="container"><div class="curve" id="preheader_curve_0"></div><div class="curve" id="preheader_curve_1"></div><div class="curve" id="preheader_curve_2"></div><div class="curve" id="preheader_curve_3"></div><div class="curve" id="preheader_curve_4"></div><div class="curve" id="preheader_curve_5"></div><div id="header"><p>
+</p><span><h1 id="title">
+Class: Cassandra
+</h1></span>
+</div><div class="clear"></div><div id="left">
+<div class="navigation darker top" id="child_of"><h3>Child of</h3><span>
+
+Object
+</span></div>
+
+<div class="navigation darker top" id="defined_in"><h3>Defined in</h3>
+
+<a href="../files/lib/cassandra_rb.html">lib/cassandra.rb</a>
+
+
+<a href="../files/lib/cassandra/0_6_rb.html">lib/cassandra/0.6.rb</a>
+
+
+<a href="../files/lib/cassandra/0_6/cassandra_rb.html">lib/cassandra/0.6/cassandra.rb</a>
+
+
+<a href="../files/lib/cassandra/0_6/columns_rb.html">lib/cassandra/0.6/columns.rb</a>
+
+
+<a href="../files/lib/cassandra/0_6/protocol_rb.html">lib/cassandra/0.6/protocol.rb</a>
+
+
+<a href="../files/lib/cassandra/0_7_rb.html">lib/cassandra/0.7.rb</a>
+
+
+<a href="../files/lib/cassandra/0_7/cassandra_rb.html">lib/cassandra/0.7/cassandra.rb</a>
+
+
+<a href="../files/lib/cassandra/0_7/column_family_rb.html">lib/cassandra/0.7/column_family.rb</a>
+
+
+<a href="../files/lib/cassandra/0_7/columns_rb.html">lib/cassandra/0.7/columns.rb</a>
+
+
+<a href="../files/lib/cassandra/0_7/keyspace_rb.html">lib/cassandra/0.7/keyspace.rb</a>
+
+
+<a href="../files/lib/cassandra/0_7/protocol_rb.html">lib/cassandra/0.7/protocol.rb</a>
+
+
+<a href="../files/lib/cassandra/cassandra_rb.html">lib/cassandra/cassandra.rb</a>
+
+
+<a href="../files/lib/cassandra/columns_rb.html">lib/cassandra/columns.rb</a>
+
+
+<a href="../files/lib/cassandra/comparable_rb.html">lib/cassandra/comparable.rb</a>
+
+
+<a href="../files/lib/cassandra/constants_rb.html">lib/cassandra/constants.rb</a>
+
+
+<a href="../files/lib/cassandra/helpers_rb.html">lib/cassandra/helpers.rb</a>
+
+
+<a href="../files/lib/cassandra/long_rb.html">lib/cassandra/long.rb</a>
+
+
+<a href="../files/lib/cassandra/mock_rb.html">lib/cassandra/mock.rb</a>
+
+
+<a href="../files/lib/cassandra/ordered_hash_rb.html">lib/cassandra/ordered_hash.rb</a>
+
+</div>
+
+<div class="navigation top" id="includes"><h3>Includes</h3>
+
+
+Columns<br/>
+
+
+
+
+Protocol<br/>
+
+
+
+
+<a href='Cassandra/Helpers.html'>
+Helpers<br/>
+</a>
+
+
+</div>
+
+
+<div class="navigation top" id="methods"><h3>Methods</h3>
+
+
+<a href='#M000014'>
+DEFAULT_TRANSPORT_WRAPPER<br/>
+</a>
+
+
+
+
+<a href='#M000005'>
+DEFAULT_TRANSPORT_WRAPPER<br/>
+</a>
+
+
+
+
+<a href='#M000004'>
+VERSION<br/>
+</a>
+
+
+
+
+<a href='#M000013'>
+VERSION<br/>
+</a>
+
+
+
+
+<a href='#M000027'>
+add_column_family<br/>
+</a>
+
+
+
+
+<a href='#M000031'>
+add_keyspace<br/>
+</a>
+
+
+
+
+<a href='#M000044'>
+all_nodes<br/>
+</a>
+
+
+
+
+<a href='#M000012'>
+all_nodes<br/>
+</a>
+
+
+
+
+<a href='#M000035'>
+batch<br/>
+</a>
+
+
+
+
+<a href='#M000062'>
+batch<br/>
+</a>
+
+
+
+
+<a href='#M000063'>
+calling_method<br/>
+</a>
+
+
+
+
+<a href='#M000011'>
+check_keyspace<br/>
+</a>
+
+
+
+
+<a href='#M000043'>
+check_keyspace<br/>
+</a>
+
+
+
+
+<a href='#M000006'>
+clear_column_family!<br/>
+</a>
+
+
+
+
+<a href='#M000007'>
+clear_keyspace!<br/>
+</a>
+
+
+
+
+<a href='#M000026'>
+clear_keyspace!<br/>
+</a>
+
+
+
+
+<a href='#M000009'>
+client<br/>
+</a>
+
+
+
+
+<a href='#M000041'>
+client<br/>
+</a>
+
+
+
+
+<a href='#M000022'>
+cluster_name<br/>
+</a>
+
+
+
+
+<a href='#M000064'>
+compact_mutations!<br/>
+</a>
+
+
+
+
+<a href='#M000053'>
+count_columns<br/>
+</a>
+
+
+
+
+<a href='#M000061'>
+count_range<br/>
+</a>
+
+
+
+
+<a href='#M000039'>
+create_idx_clause<br/>
+</a>
+
+
+
+
+<a href='#M000038'>
+create_idx_expr<br/>
+</a>
+
+
+
+
+<a href='#M000036'>
+create_index<br/>
+</a>
+
+
+
+
+<a href='#M000046'>
+disable_node_auto_discovery!<br/>
+</a>
+
+
+
+
+<a href='#M000047'>
+disconnect!<br/>
+</a>
+
+
+
+
+<a href='#M000028'>
+drop_column_family<br/>
+</a>
+
+
+
+
+<a href='#M000037'>
+drop_index<br/>
+</a>
+
+
+
+
+<a href='#M000032'>
+drop_keyspace<br/>
+</a>
+
+
+
+
+<a href='#M000059'>
+exists?<br/>
+</a>
+
+
+
+
+<a href='#M000057'>
+get<br/>
+</a>
+
+
+
+
+<a href='#M000055'>
+get_columns<br/>
+</a>
+
+
+
+
+<a href='#M000040'>
+get_indexed_slices<br/>
+</a>
+
+
+
+
+<a href='#M000060'>
+get_range<br/>
+</a>
+
+
+
+
+<a href='#M000051'>
+insert<br/>
+</a>
+
+
+
+
+<a href='#M000016'>
+inspect<br/>
+</a>
+
+
+
+
+<a href='#M000050'>
+inspect<br/>
+</a>
+
+
+
+
+<a href='#M000017'>
+keyspace=<br/>
+</a>
+
+
+
+
+<a href='#M000018'>
+keyspaces<br/>
+</a>
+
+
+
+
+<a href='#M000048'>
+keyspaces<br/>
+</a>
+
+
+
+
+<a href='#M000049'>
+login!<br/>
+</a>
+
+
+
+
+<a href='#M000015'>
+login!<br/>
+</a>
+
+
+
+
+<a href='#M000054'>
+multi_count_columns<br/>
+</a>
+
+
+
+
+<a href='#M000058'>
+multi_get<br/>
+</a>
+
+
+
+
+<a href='#M000056'>
+multi_get_columns<br/>
+</a>
+
+
+
+
+<a href='#M000045'>
+new<br/>
+</a>
+
+
+
+
+<a href='#M000065'>
+new_client<br/>
+</a>
+
+
+
+
+<a href='#M000024'>
+partitioner<br/>
+</a>
+
+
+
+
+<a href='#M000010'>
+reconnect!<br/>
+</a>
+
+
+
+
+<a href='#M000042'>
+reconnect!<br/>
+</a>
+
+
+
+
+<a href='#M000052'>
+remove<br/>
+</a>
+
+
+
+
+<a href='#M000029'>
+rename_column_family<br/>
+</a>
+
+
+
+
+<a href='#M000033'>
+rename_keyspace<br/>
+</a>
+
+
+
+
+<a href='#M000023'>
+ring<br/>
+</a>
+
+
+
+
+<a href='#M000008'>
+schema<br/>
+</a>
+
+
+
+
+<a href='#M000019'>
+schema<br/>
+</a>
+
+
+
+
+<a href='#M000020'>
+schema_agreement?<br/>
+</a>
+
+
+
+
+<a href='#M000025'>
+truncate!<br/>
+</a>
+
+
+
+
+<a href='#M000030'>
+update_column_family<br/>
+</a>
+
+
+
+
+<a href='#M000034'>
+update_keyspace<br/>
+</a>
+
+
+
+
+<a href='#M000021'>
+version<br/>
+</a>
+
+
+</div>
+<div id="spacer"></div><div class="navigation darker index" id="class_wrapper"><div class="list_header"><h3>All classes</h3></div><div class="list_header_link"><a onclick="toggle('class'); toggleText('class_link'); return false;" href="#" id="class_link">Hide...</a></div><div class="clear"></div><div id="class"><form><label for="filter_class">Filter:&nbsp;&nbsp;</label><input type="text" onKeyUp="return filterList('class', this.value, event);" onKeyPress="return disableSubmit(event);" id="filter_class"></input></form></div></div><div class="navigation darker index" id="file_wrapper"><div class="list_header"><h3>All files</h3></div><div class="list_header_link"><a onclick="toggle('file'); toggleText('file_link'); return false;" href="#" id="file_link">Hide...</a></div><div class="clear"></div><div id="file"><form><label for="filter_file">Filter:&nbsp;&nbsp;</label><input type="text" onKeyUp="return filterList('file', this.value, event);" onKeyPress="return disableSubmit(event);" id="filter_file"></input></form></div></div><div class="navigation darker index" id="method_wrapper"><div class="list_header"><h3>All methods</h3></div><div class="list_header_link"><a onclick="toggle('method'); toggleText('method_link'); return false;" href="#" id="method_link">Show...</a></div><div class="clear"></div><div id="method"><form><label for="filter_method">Filter:&nbsp;&nbsp;</label><input type="text" onKeyUp="return filterList('method', this.value, event);" onKeyPress="return disableSubmit(event);" id="filter_method"></input></form></div></div></div><div id="content">
+<h1 id="item_name">Class: Cassandra</h1>
+
+<div id="description"><p>
+OrderedHash is namespaced to prevent conflicts with other implementations
+</p>
+</div>
+
+
+
+
+<p></p>
+
+<h1>Child modules and classes</h1><p>Module <a href="Cassandra/Consistency.html" class="link">Cassandra::Consistency</a><br />
+Module <a href="Cassandra/Constants.html" class="link">Cassandra::Constants</a><br />
+Module <a href="Cassandra/Helpers.html" class="link">Cassandra::Helpers</a><br />
+Class <a href="Cassandra/Client.html" class="link">Cassandra::Client</a><br />
+Class <a href="Cassandra/ColumnFamily.html" class="link">Cassandra::ColumnFamily</a><br />
+Class <a href="Cassandra/Comparable.html" class="link">Cassandra::Comparable</a><br />
+Class <a href="Cassandra/Keyspace.html" class="link">Cassandra::Keyspace</a><br />
+Class <a href="Cassandra/Long.html" class="link">Cassandra::Long</a><br />
+Class <a href="Cassandra/Mock.html" class="link">Cassandra::Mock</a><br />
+</p>
+
+<h1>Constants</h1><p><table><tr><th>Name</th><th>Value</th></tr>
+<tr>
+<td class="highlight">WRITE_DEFAULTS</td>
+
+<td class="normal">{     :count =&gt; 1000,     :timestamp =&gt; nil,     :consistency =&gt; Consistency::ONE,     :ttl =&gt; nil</td>
+
+
+
+</tr>
+<tr>
+<td class="highlight">READ_DEFAULTS</td>
+
+<td class="normal">{     :count =&gt; 100,     :start =&gt; nil,     :finish =&gt; nil,     :reversed =&gt; false,     :consistency =&gt; Consistency::ONE</td>
+
+
+
+</tr>
+<tr>
+<td class="highlight">THRIFT_DEFAULTS</td>
+
+<td class="normal">{     :transport_wrapper =&gt; Thrift::BufferedTransport,     :thrift_client_class =&gt; ThriftClient</td>
+
+
+
+</tr>
+<tr>
+<td class="highlight">OrderedHashInt</td>
+
+<td class="normal">::Hash</td>
+
+
+
+</tr>
+</table></p>
+
+
+<h1>Attributes</h1><p><table><tr><th>Name</th><th>Read/write?</th></tr>
+<tr>
+<td class="highlight">auth_request</td>
+
+
+
+
+<td class="normal">R</td>
+</tr>
+<tr>
+<td class="highlight">keyspace</td>
+
+
+
+
+<td class="normal">R</td>
+</tr>
+<tr>
+<td class="highlight">schema</td>
+
+
+
+
+<td class="normal">R</td>
+</tr>
+<tr>
+<td class="highlight">servers</td>
+
+
+
+
+<td class="normal">R</td>
+</tr>
+<tr>
+<td class="highlight">thrift_client_class</td>
+
+
+
+
+<td class="normal">R</td>
+</tr>
+<tr>
+<td class="highlight">thrift_client_options</td>
+
+
+
+
+<td class="normal">R</td>
+</tr>
+</table></p>
+
+
+<h1>Public Class Methods</h1>
+
+
+<a class="small" name="M000014"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000014'>
+
+
+DEFAULT_TRANSPORT_WRAPPER
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000014-show-link"><a onclick="toggle('M000014-source'); toggleText('M000014-link'); return false;" href="#" id="M000014-link">Show source...</a></p><div class="source" id="M000014-source"><pre>   <span class="ruby-comment cmt"># File lib/cassandra/0.7/cassandra.rb, line 3</span>
+3:   <span class="ruby-keyword kw">def</span> <span class="ruby-keyword kw">self</span>.<span class="ruby-constant">DEFAULT_TRANSPORT_WRAPPER</span>
+4:     <span class="ruby-constant">Thrift</span><span class="ruby-operator">::</span><span class="ruby-constant">FramedTransport</span>
+5:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000005"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000005'>
+
+
+DEFAULT_TRANSPORT_WRAPPER
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000005-show-link"><a onclick="toggle('M000005-source'); toggleText('M000005-link'); return false;" href="#" id="M000005-link">Show source...</a></p><div class="source" id="M000005-source"><pre>   <span class="ruby-comment cmt"># File lib/cassandra/0.6/cassandra.rb, line 2</span>
+2:   <span class="ruby-keyword kw">def</span> <span class="ruby-keyword kw">self</span>.<span class="ruby-constant">DEFAULT_TRANSPORT_WRAPPER</span>
+3:     <span class="ruby-constant">Thrift</span><span class="ruby-operator">::</span><span class="ruby-constant">BufferedTransport</span>
+4:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000004"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000004'>
+
+
+VERSION
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000004-show-link"><a onclick="toggle('M000004-source'); toggleText('M000004-link'); return false;" href="#" id="M000004-link">Show source...</a></p><div class="source" id="M000004-source"><pre>   <span class="ruby-comment cmt"># File lib/cassandra/0.6.rb, line 2</span>
+2:   <span class="ruby-keyword kw">def</span> <span class="ruby-keyword kw">self</span>.<span class="ruby-constant">VERSION</span>
+3:     <span class="ruby-value str">&quot;0.6&quot;</span>
+4:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000013"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000013'>
+
+
+VERSION
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000013-show-link"><a onclick="toggle('M000013-source'); toggleText('M000013-link'); return false;" href="#" id="M000013-link">Show source...</a></p><div class="source" id="M000013-source"><pre>   <span class="ruby-comment cmt"># File lib/cassandra/0.7.rb, line 2</span>
+2:   <span class="ruby-keyword kw">def</span> <span class="ruby-keyword kw">self</span>.<span class="ruby-constant">VERSION</span>
+3:     <span class="ruby-value str">&quot;0.7&quot;</span>
+4:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000045"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000045'>
+
+
+new
+
+(keyspace, servers = &quot;127.0.0.1:9160&quot;, thrift_client_options = {})
+
+</a>
+</h3>
+<p>
+Create a <a href="Cassandra.html#M000045">new</a> <a
+href="Cassandra.html">Cassandra</a> instance and open the connection.
+</p>
+
+<p class="source_link" id="M000045-show-link"><a onclick="toggle('M000045-source'); toggleText('M000045-link'); return false;" href="#" id="M000045-link">Show source...</a></p><div class="source" id="M000045-source"><pre>    <span class="ruby-comment cmt"># File lib/cassandra/cassandra.rb, line 70</span>
+70:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">initialize</span>(<span class="ruby-identifier">keyspace</span>, <span class="ruby-identifier">servers</span> = <span class="ruby-value str">&quot;127.0.0.1:9160&quot;</span>, <span class="ruby-identifier">thrift_client_options</span> = {})
+71:     <span class="ruby-ivar">@is_super</span> = {}
+72:     <span class="ruby-ivar">@column_name_class</span> = {}
+73:     <span class="ruby-ivar">@sub_column_name_class</span> = {}
+74:     <span class="ruby-ivar">@auto_discover_nodes</span> = <span class="ruby-keyword kw">true</span>
+75:     <span class="ruby-identifier">thrift_client_options</span>[<span class="ruby-identifier">:transport_wrapper</span>] <span class="ruby-operator">||=</span> <span class="ruby-constant">Cassandra</span>.<span class="ruby-constant">DEFAULT_TRANSPORT_WRAPPER</span>
+76:     <span class="ruby-ivar">@thrift_client_options</span> = <span class="ruby-constant">THRIFT_DEFAULTS</span>.<span class="ruby-identifier">merge</span>(<span class="ruby-identifier">thrift_client_options</span>)
+77:     <span class="ruby-ivar">@thrift_client_class</span> = <span class="ruby-ivar">@thrift_client_options</span>[<span class="ruby-identifier">:thrift_client_class</span>]
+78:     <span class="ruby-ivar">@keyspace</span> = <span class="ruby-identifier">keyspace</span>
+79:     <span class="ruby-ivar">@servers</span> = <span class="ruby-constant">Array</span>(<span class="ruby-identifier">servers</span>)
+80:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+
+<h1>Public Instance Methods</h1>
+
+
+<a class="small" name="M000027"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000027'>
+
+
+add_column_family
+
+(cf_def)
+
+</a>
+</h3>
+<p>
+Read
+</p>
+
+<p class="source_link" id="M000027-show-link"><a onclick="toggle('M000027-source'); toggleText('M000027-link'); return false;" href="#" id="M000027-link">Show source...</a></p><div class="source" id="M000027-source"><pre>    <span class="ruby-comment cmt"># File lib/cassandra/0.7/cassandra.rb, line 73</span>
+73:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">add_column_family</span>(<span class="ruby-identifier">cf_def</span>)
+74:     <span class="ruby-keyword kw">begin</span>
+75:       <span class="ruby-identifier">res</span> = <span class="ruby-identifier">client</span>.<span class="ruby-identifier">system_add_column_family</span>(<span class="ruby-identifier">cf_def</span>)
+76:     <span class="ruby-keyword kw">rescue</span> <span class="ruby-constant">CassandraThrift</span><span class="ruby-operator">::</span><span class="ruby-constant">TimedOutException</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">te</span>
+77:       <span class="ruby-identifier">puts</span> <span class="ruby-node">&quot;Timed out: #{te.inspect}&quot;</span>
+78:     <span class="ruby-keyword kw">end</span>
+79:     <span class="ruby-ivar">@schema</span> = <span class="ruby-keyword kw">nil</span>
+80:     <span class="ruby-identifier">res</span>
+81:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000031"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000031'>
+
+
+add_keyspace
+
+(ks_def)
+
+</a>
+</h3>
+
+<p class="source_link" id="M000031-show-link"><a onclick="toggle('M000031-source'); toggleText('M000031-link'); return false;" href="#" id="M000031-link">Show source...</a></p><div class="source" id="M000031-source"><pre>     <span class="ruby-comment cmt"># File lib/cassandra/0.7/cassandra.rb, line 113</span>
+113:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">add_keyspace</span>(<span class="ruby-identifier">ks_def</span>)
+114:     <span class="ruby-keyword kw">begin</span>
+115:       <span class="ruby-identifier">res</span> = <span class="ruby-identifier">client</span>.<span class="ruby-identifier">system_add_keyspace</span>(<span class="ruby-identifier">ks_def</span>)
+116:     <span class="ruby-keyword kw">rescue</span> <span class="ruby-constant">CassandraThrift</span><span class="ruby-operator">::</span><span class="ruby-constant">TimedOutException</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">toe</span>
+117:       <span class="ruby-identifier">puts</span> <span class="ruby-node">&quot;Timed out: #{toe.inspect}&quot;</span>
+118:     <span class="ruby-keyword kw">rescue</span> <span class="ruby-constant">Thrift</span><span class="ruby-operator">::</span><span class="ruby-constant">TransportException</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">te</span>
+119:       <span class="ruby-identifier">puts</span> <span class="ruby-node">&quot;Timed out: #{te.inspect}&quot;</span>
+120:     <span class="ruby-keyword kw">end</span>
+121:     <span class="ruby-ivar">@keyspaces</span> = <span class="ruby-keyword kw">nil</span>
+122:     <span class="ruby-identifier">res</span>
+123:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000035"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000035'>
+
+
+batch
+
+(options = {}) {|self| ...}
+
+</a>
+</h3>
+<p>
+Open a <a href="Cassandra.html#M000035">batch</a> operation and yield self.
+Inserts and deletes will be queued until the block closes, and then sent
+atomically to the server. Supports the <tt>:consistency</tt> option, which
+overrides the consistency set in the individual commands.
+</p>
+
+<p class="source_link" id="M000035-show-link"><a onclick="toggle('M000035-source'); toggleText('M000035-link'); return false;" href="#" id="M000035-link">Show source...</a></p><div class="source" id="M000035-source"><pre>     <span class="ruby-comment cmt"># File lib/cassandra/0.7/cassandra.rb, line 167</span>
+167:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">batch</span>(<span class="ruby-identifier">options</span> = {})
+168:     <span class="ruby-identifier">_</span>, <span class="ruby-identifier">_</span>, <span class="ruby-identifier">_</span>, <span class="ruby-identifier">options</span> =
+169:       <span class="ruby-identifier">extract_and_validate_params</span>(<span class="ruby-identifier">schema</span>.<span class="ruby-identifier">cf_defs</span>.<span class="ruby-identifier">first</span>.<span class="ruby-identifier">name</span>, <span class="ruby-value str">&quot;&quot;</span>, [<span class="ruby-identifier">options</span>], <span class="ruby-constant">WRITE_DEFAULTS</span>)
+170: 
+171:     <span class="ruby-ivar">@batch</span> = []
+172:     <span class="ruby-keyword kw">yield</span>(<span class="ruby-keyword kw">self</span>)
+173:     <span class="ruby-identifier">compact_mutations!</span>
+174: 
+175:     <span class="ruby-ivar">@batch</span>.<span class="ruby-identifier">each</span> <span class="ruby-keyword kw">do</span> <span class="ruby-operator">|</span><span class="ruby-identifier">mutation</span><span class="ruby-operator">|</span>
+176:       <span class="ruby-keyword kw">case</span> <span class="ruby-identifier">mutation</span>.<span class="ruby-identifier">first</span>
+177:       <span class="ruby-keyword kw">when</span> <span class="ruby-identifier">:remove</span>
+178:         <span class="ruby-identifier">_remove</span>(<span class="ruby-operator">*</span><span class="ruby-identifier">mutation</span>[<span class="ruby-value">1</span>])
+179:       <span class="ruby-keyword kw">else</span>
+180:         <span class="ruby-identifier">_mutate</span>(<span class="ruby-operator">*</span><span class="ruby-identifier">mutation</span>)
+181:       <span class="ruby-keyword kw">end</span>
+182:     <span class="ruby-keyword kw">end</span>
+183:   <span class="ruby-keyword kw">ensure</span>
+184:     <span class="ruby-ivar">@batch</span> = <span class="ruby-keyword kw">nil</span>
+185:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000062"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000062'>
+
+
+batch
+
+(options = {}) {|self| ...}
+
+</a>
+</h3>
+<p>
+Open a <a href="Cassandra.html#M000035">batch</a> operation and yield self.
+Inserts and deletes will be queued until the block closes, and then sent
+atomically to the server. Supports the <tt>:consistency</tt> option, which
+overrides the consistency set in the individual commands.
+</p>
+
+<p class="source_link" id="M000062-show-link"><a onclick="toggle('M000062-source'); toggleText('M000062-link'); return false;" href="#" id="M000062-link">Show source...</a></p><div class="source" id="M000062-source"><pre>     <span class="ruby-comment cmt"># File lib/cassandra/cassandra.rb, line 240</span>
+240:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">batch</span>(<span class="ruby-identifier">options</span> = {})
+241:     <span class="ruby-identifier">_</span>, <span class="ruby-identifier">_</span>, <span class="ruby-identifier">_</span>, <span class="ruby-identifier">options</span> = 
+242:       <span class="ruby-identifier">extract_and_validate_params</span>(<span class="ruby-identifier">schema</span>.<span class="ruby-identifier">keys</span>.<span class="ruby-identifier">first</span>, <span class="ruby-value str">&quot;&quot;</span>, [<span class="ruby-identifier">options</span>], <span class="ruby-constant">WRITE_DEFAULTS</span>)
+243: 
+244:     <span class="ruby-ivar">@batch</span> = []
+245:     <span class="ruby-keyword kw">yield</span>(<span class="ruby-keyword kw">self</span>)
+246:     <span class="ruby-identifier">compact_mutations!</span>
+247: 
+248:     <span class="ruby-ivar">@batch</span>.<span class="ruby-identifier">each</span> <span class="ruby-keyword kw">do</span> <span class="ruby-operator">|</span><span class="ruby-identifier">mutation</span><span class="ruby-operator">|</span>
+249:       <span class="ruby-keyword kw">case</span> <span class="ruby-identifier">mutation</span>.<span class="ruby-identifier">first</span>
+250:       <span class="ruby-keyword kw">when</span> <span class="ruby-identifier">:remove</span>
+251:         <span class="ruby-identifier">_remove</span>(<span class="ruby-operator">*</span><span class="ruby-identifier">mutation</span>[<span class="ruby-value">1</span>])
+252:       <span class="ruby-keyword kw">else</span>
+253:         <span class="ruby-identifier">_mutate</span>(<span class="ruby-operator">*</span><span class="ruby-identifier">mutation</span>)
+254:       <span class="ruby-keyword kw">end</span>
+255:     <span class="ruby-keyword kw">end</span>
+256:   <span class="ruby-keyword kw">ensure</span>
+257:     <span class="ruby-ivar">@batch</span> = <span class="ruby-keyword kw">nil</span>
+258:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000006"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000006'>
+
+
+clear_column_family!
+
+(column_family, options = {})
+
+</a>
+</h3>
+<p>
+Remove all rows in the column family you request. Supports options
+<tt>:consistency</tt> and <tt>:timestamp</tt>. FIXME May not currently
+delete all records without multiple calls. Waiting for ranged <a
+href="Cassandra.html#M000052">remove</a> support in <a
+href="Cassandra.html">Cassandra</a>.
+</p>
+
+<p class="source_link" id="M000006-show-link"><a onclick="toggle('M000006-source'); toggleText('M000006-link'); return false;" href="#" id="M000006-link">Show source...</a></p><div class="source" id="M000006-source"><pre>    <span class="ruby-comment cmt"># File lib/cassandra/0.6/cassandra.rb, line 12</span>
+12:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">clear_column_family!</span>(<span class="ruby-identifier">column_family</span>, <span class="ruby-identifier">options</span> = {})
+13:     <span class="ruby-identifier">each_key</span>(<span class="ruby-identifier">column_family</span>) <span class="ruby-keyword kw">do</span> <span class="ruby-operator">|</span><span class="ruby-identifier">key</span><span class="ruby-operator">|</span>
+14:       <span class="ruby-identifier">remove</span>(<span class="ruby-identifier">column_family</span>, <span class="ruby-identifier">key</span>, <span class="ruby-identifier">options</span>)
+15:     <span class="ruby-keyword kw">end</span>
+16:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000007"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000007'>
+
+
+clear_keyspace!
+
+(options = {})
+
+</a>
+</h3>
+<p>
+Remove all rows in the keyspace. Supports options <tt>:consistency</tt> and
+<tt>:timestamp</tt>. FIXME May not currently delete all records without
+multiple calls. Waiting for ranged <a
+href="Cassandra.html#M000052">remove</a> support in <a
+href="Cassandra.html">Cassandra</a>.
+</p>
+
+<p class="source_link" id="M000007-show-link"><a onclick="toggle('M000007-source'); toggleText('M000007-link'); return false;" href="#" id="M000007-link">Show source...</a></p><div class="source" id="M000007-source"><pre>    <span class="ruby-comment cmt"># File lib/cassandra/0.6/cassandra.rb, line 22</span>
+22:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">clear_keyspace!</span>(<span class="ruby-identifier">options</span> = {})
+23:     <span class="ruby-identifier">schema</span>.<span class="ruby-identifier">keys</span>.<span class="ruby-identifier">each</span> { <span class="ruby-operator">|</span><span class="ruby-identifier">column_family</span><span class="ruby-operator">|</span> <span class="ruby-identifier">clear_column_family!</span>(<span class="ruby-identifier">column_family</span>, <span class="ruby-identifier">options</span>) }
+24:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000026"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000026'>
+
+
+clear_keyspace!
+
+()
+
+</a>
+</h3>
+<p>
+Remove all rows in the keyspace.
+</p>
+
+<p class="source_link" id="M000026-show-link"><a onclick="toggle('M000026-source'); toggleText('M000026-link'); return false;" href="#" id="M000026-link">Show source...</a></p><div class="source" id="M000026-source"><pre>    <span class="ruby-comment cmt"># File lib/cassandra/0.7/cassandra.rb, line 67</span>
+67:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">clear_keyspace!</span>
+68:     <span class="ruby-identifier">schema</span>.<span class="ruby-identifier">cf_defs</span>.<span class="ruby-identifier">each</span> { <span class="ruby-operator">|</span><span class="ruby-identifier">cfdef</span><span class="ruby-operator">|</span> <span class="ruby-identifier">truncate!</span>(<span class="ruby-identifier">cfdef</span>.<span class="ruby-identifier">name</span>) }
+69:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000022"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000022'>
+
+
+cluster_name
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000022-show-link"><a onclick="toggle('M000022-source'); toggleText('M000022-link'); return false;" href="#" id="M000022-link">Show source...</a></p><div class="source" id="M000022-source"><pre>    <span class="ruby-comment cmt"># File lib/cassandra/0.7/cassandra.rb, line 44</span>
+44:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">cluster_name</span>
+45:     <span class="ruby-ivar">@cluster_name</span> <span class="ruby-operator">||=</span> <span class="ruby-identifier">client</span>.<span class="ruby-identifier">describe_cluster_name</span>()
+46:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000053"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000053'>
+
+
+count_columns
+
+(column_family, key, *columns_and_options)
+
+</a>
+</h3>
+<p>
+Count the elements at the column_family:key:[super_column] path you
+request. Supports the <tt>:consistency</tt> option.
+</p>
+
+<p class="source_link" id="M000053-show-link"><a onclick="toggle('M000053-source'); toggleText('M000053-link'); return false;" href="#" id="M000053-link">Show source...</a></p><div class="source" id="M000053-source"><pre>     <span class="ruby-comment cmt"># File lib/cassandra/cassandra.rb, line 157</span>
+157:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">count_columns</span>(<span class="ruby-identifier">column_family</span>, <span class="ruby-identifier">key</span>, <span class="ruby-operator">*</span><span class="ruby-identifier">columns_and_options</span>)
+158:     <span class="ruby-identifier">column_family</span>, <span class="ruby-identifier">super_column</span>, <span class="ruby-identifier">_</span>, <span class="ruby-identifier">options</span> = 
+159:       <span class="ruby-identifier">extract_and_validate_params</span>(<span class="ruby-identifier">column_family</span>, <span class="ruby-identifier">key</span>, <span class="ruby-identifier">columns_and_options</span>, <span class="ruby-constant">READ_DEFAULTS</span>)      
+160:     <span class="ruby-identifier">_count_columns</span>(<span class="ruby-identifier">column_family</span>, <span class="ruby-identifier">key</span>, <span class="ruby-identifier">super_column</span>, <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:consistency</span>])
+161:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000061"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000061'>
+
+
+count_range
+
+(column_family, options = {})
+
+</a>
+</h3>
+<p>
+Count all rows in the column_family you request. Requires the table to be
+partitioned with OrderPreservingHash. Supports the <tt>:start</tt>,
+<tt>:finish</tt>, and <tt>:consistency</tt> options.
+</p>
+
+<p class="source_link" id="M000061-show-link"><a onclick="toggle('M000061-source'); toggleText('M000061-link'); return false;" href="#" id="M000061-link">Show source...</a></p><div class="source" id="M000061-source"><pre>     <span class="ruby-comment cmt"># File lib/cassandra/cassandra.rb, line 232</span>
+232:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">count_range</span>(<span class="ruby-identifier">column_family</span>, <span class="ruby-identifier">options</span> = {})
+233:     <span class="ruby-identifier">get_range</span>(<span class="ruby-identifier">column_family</span>, <span class="ruby-identifier">options</span>).<span class="ruby-identifier">select</span>{<span class="ruby-operator">|</span><span class="ruby-identifier">r</span><span class="ruby-operator">|</span> <span class="ruby-identifier">r</span>.<span class="ruby-identifier">columns</span>.<span class="ruby-identifier">length</span> <span class="ruby-operator">&gt;</span> <span class="ruby-value">0</span>}.<span class="ruby-identifier">compact</span>.<span class="ruby-identifier">length</span>
+234:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000039"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000039'>
+
+
+create_idx_clause
+
+(idx_expressions, start = &quot;&quot;)
+
+</a>
+</h3>
+
+<p class="source_link" id="M000039-show-link"><a onclick="toggle('M000039-source'); toggleText('M000039-link'); return false;" href="#" id="M000039-link">Show source...</a></p><div class="source" id="M000039-source"><pre>     <span class="ruby-comment cmt"># File lib/cassandra/0.7/cassandra.rb, line 228</span>
+228:         <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">create_idx_clause</span>(<span class="ruby-identifier">idx_expressions</span>, <span class="ruby-identifier">start</span> = <span class="ruby-value str">&quot;&quot;</span>)
+229:                 <span class="ruby-constant">CassandraThrift</span><span class="ruby-operator">::</span><span class="ruby-constant">IndexClause</span>.<span class="ruby-identifier">new</span>(
+230:                         <span class="ruby-identifier">:start_key</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">start</span>,
+231:                         <span class="ruby-identifier">:expressions</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">idx_expressions</span>)
+232:         <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000038"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000038'>
+
+
+create_idx_expr
+
+(c_name, value, op)
+
+</a>
+</h3>
+
+<p class="source_link" id="M000038-show-link"><a onclick="toggle('M000038-source'); toggleText('M000038-link'); return false;" href="#" id="M000038-link">Show source...</a></p><div class="source" id="M000038-source"><pre>     <span class="ruby-comment cmt"># File lib/cassandra/0.7/cassandra.rb, line 210</span>
+210:         <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">create_idx_expr</span>(<span class="ruby-identifier">c_name</span>, <span class="ruby-identifier">value</span>, <span class="ruby-identifier">op</span>)
+211:                 <span class="ruby-constant">CassandraThrift</span><span class="ruby-operator">::</span><span class="ruby-constant">IndexExpression</span>.<span class="ruby-identifier">new</span>(
+212:                         <span class="ruby-identifier">:column_name</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">c_name</span>,
+213:                         <span class="ruby-identifier">:value</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">value</span>,
+214:                         <span class="ruby-identifier">:op</span> =<span class="ruby-operator">&gt;</span> (<span class="ruby-keyword kw">case</span> <span class="ruby-identifier">op</span>
+215:                                                                 <span class="ruby-keyword kw">when</span> <span class="ruby-keyword kw">nil</span>, <span class="ruby-value str">&quot;EQ&quot;</span>, <span class="ruby-value str">&quot;eq&quot;</span>, <span class="ruby-value str">&quot;==&quot;</span>
+216:                                                                         <span class="ruby-constant">CassandraThrift</span><span class="ruby-operator">::</span><span class="ruby-constant">IndexOperator</span><span class="ruby-operator">::</span><span class="ruby-constant">EQ</span>
+217:                                                                 <span class="ruby-keyword kw">when</span> <span class="ruby-value str">&quot;GTE&quot;</span>, <span class="ruby-value str">&quot;gte&quot;</span>, <span class="ruby-value str">&quot;&gt;=&quot;</span>
+218:                                                                         <span class="ruby-constant">CassandraThrift</span><span class="ruby-operator">::</span><span class="ruby-constant">IndexOperator</span><span class="ruby-operator">::</span><span class="ruby-constant">GTE</span>
+219:                                                                 <span class="ruby-keyword kw">when</span> <span class="ruby-value str">&quot;GT&quot;</span>, <span class="ruby-value str">&quot;gt&quot;</span>, <span class="ruby-value str">&quot;&gt;&quot;</span>
+220:                                                                         <span class="ruby-constant">CassandraThrift</span><span class="ruby-operator">::</span><span class="ruby-constant">IndexOperator</span><span class="ruby-operator">::</span><span class="ruby-constant">GT</span>
+221:                                                                 <span class="ruby-keyword kw">when</span> <span class="ruby-value str">&quot;LTE&quot;</span>, <span class="ruby-value str">&quot;lte&quot;</span>, <span class="ruby-value str">&quot;&lt;=&quot;</span>
+222:                                                                         <span class="ruby-constant">CassandraThrift</span><span class="ruby-operator">::</span><span class="ruby-constant">IndexOperator</span><span class="ruby-operator">::</span><span class="ruby-constant">LTE</span>
+223:                                                                 <span class="ruby-keyword kw">when</span> <span class="ruby-value str">&quot;LT&quot;</span>, <span class="ruby-value str">&quot;lt&quot;</span>, <span class="ruby-value str">&quot;&lt;&quot;</span>
+224:                                                                         <span class="ruby-constant">CassandraThrift</span><span class="ruby-operator">::</span><span class="ruby-constant">IndexOperator</span><span class="ruby-operator">::</span><span class="ruby-constant">LT</span>
+225:                                                         <span class="ruby-keyword kw">end</span> ))
+226:         <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000036"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000036'>
+
+
+create_index
+
+(ks_name, cf_name, c_name, v_class)
+
+</a>
+</h3>
+<p>
+2ary Indexing
+</p>
+
+<p class="source_link" id="M000036-show-link"><a onclick="toggle('M000036-source'); toggleText('M000036-link'); return false;" href="#" id="M000036-link">Show source...</a></p><div class="source" id="M000036-source"><pre>     <span class="ruby-comment cmt"># File lib/cassandra/0.7/cassandra.rb, line 189</span>
+189:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">create_index</span>(<span class="ruby-identifier">ks_name</span>, <span class="ruby-identifier">cf_name</span>, <span class="ruby-identifier">c_name</span>, <span class="ruby-identifier">v_class</span>)
+190:     <span class="ruby-identifier">cf_def</span> = <span class="ruby-identifier">client</span>.<span class="ruby-identifier">describe_keyspace</span>(<span class="ruby-identifier">ks_name</span>).<span class="ruby-identifier">cf_defs</span>.<span class="ruby-identifier">find</span>{<span class="ruby-operator">|</span><span class="ruby-identifier">x</span><span class="ruby-operator">|</span> <span class="ruby-identifier">x</span>.<span class="ruby-identifier">name</span> <span class="ruby-operator">==</span> <span class="ruby-identifier">cf_name</span>}
+191:     <span class="ruby-keyword kw">if</span> <span class="ruby-operator">!</span><span class="ruby-identifier">cf_def</span>.<span class="ruby-identifier">nil?</span> <span class="ruby-keyword kw">and</span> <span class="ruby-operator">!</span><span class="ruby-identifier">cf_def</span>.<span class="ruby-identifier">column_metadata</span>.<span class="ruby-identifier">find</span>{<span class="ruby-operator">|</span><span class="ruby-identifier">x</span><span class="ruby-operator">|</span> <span class="ruby-identifier">x</span>.<span class="ruby-identifier">name</span> <span class="ruby-operator">==</span> <span class="ruby-identifier">c_name</span>}
+192:       <span class="ruby-identifier">c_def</span>  = <span class="ruby-constant">CassandraThrift</span><span class="ruby-operator">::</span><span class="ruby-constant">ColumnDef</span>.<span class="ruby-identifier">new</span> <span class="ruby-keyword kw">do</span> <span class="ruby-operator">|</span><span class="ruby-identifier">cd</span><span class="ruby-operator">|</span>
+193:         <span class="ruby-identifier">cd</span>.<span class="ruby-identifier">name</span>             = <span class="ruby-identifier">c_name</span>
+194:         <span class="ruby-identifier">cd</span>.<span class="ruby-identifier">validation_class</span> = <span class="ruby-value str">&quot;org.apache.cassandra.db.marshal.&quot;</span><span class="ruby-operator">+</span><span class="ruby-identifier">v_class</span>
+195:         <span class="ruby-identifier">cd</span>.<span class="ruby-identifier">index_type</span>       = <span class="ruby-constant">CassandraThrift</span><span class="ruby-operator">::</span><span class="ruby-constant">IndexType</span><span class="ruby-operator">::</span><span class="ruby-constant">KEYS</span>
+196:       <span class="ruby-keyword kw">end</span>
+197:       <span class="ruby-identifier">cf_def</span>.<span class="ruby-identifier">column_metadata</span>.<span class="ruby-identifier">push</span>(<span class="ruby-identifier">c_def</span>)
+198:       <span class="ruby-identifier">update_column_family</span>(<span class="ruby-identifier">cf_def</span>)
+199:     <span class="ruby-keyword kw">end</span>
+200:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000046"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000046'>
+
+
+disable_node_auto_discovery!
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000046-show-link"><a onclick="toggle('M000046-source'); toggleText('M000046-link'); return false;" href="#" id="M000046-link">Show source...</a></p><div class="source" id="M000046-source"><pre>    <span class="ruby-comment cmt"># File lib/cassandra/cassandra.rb, line 82</span>
+82:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">disable_node_auto_discovery!</span>
+83:     <span class="ruby-ivar">@auto_discover_nodes</span> = <span class="ruby-keyword kw">false</span>
+84:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000047"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000047'>
+
+
+disconnect!
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000047-show-link"><a onclick="toggle('M000047-source'); toggleText('M000047-link'); return false;" href="#" id="M000047-link">Show source...</a></p><div class="source" id="M000047-source"><pre>    <span class="ruby-comment cmt"># File lib/cassandra/cassandra.rb, line 86</span>
+86:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">disconnect!</span>
+87:     <span class="ruby-keyword kw">if</span> <span class="ruby-ivar">@client</span>
+88:       <span class="ruby-ivar">@client</span>.<span class="ruby-identifier">disconnect!</span>
+89:       <span class="ruby-ivar">@client</span> = <span class="ruby-keyword kw">nil</span>
+90:     <span class="ruby-keyword kw">end</span>
+91:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000028"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000028'>
+
+
+drop_column_family
+
+(cf_name)
+
+</a>
+</h3>
+
+<p class="source_link" id="M000028-show-link"><a onclick="toggle('M000028-source'); toggleText('M000028-link'); return false;" href="#" id="M000028-link">Show source...</a></p><div class="source" id="M000028-source"><pre>    <span class="ruby-comment cmt"># File lib/cassandra/0.7/cassandra.rb, line 83</span>
+83:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">drop_column_family</span>(<span class="ruby-identifier">cf_name</span>)
+84:     <span class="ruby-keyword kw">begin</span>
+85:       <span class="ruby-identifier">res</span> = <span class="ruby-identifier">client</span>.<span class="ruby-identifier">system_drop_column_family</span>(<span class="ruby-identifier">cf_name</span>)
+86:     <span class="ruby-keyword kw">rescue</span> <span class="ruby-constant">CassandraThrift</span><span class="ruby-operator">::</span><span class="ruby-constant">TimedOutException</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">te</span>
+87:       <span class="ruby-identifier">puts</span> <span class="ruby-node">&quot;Timed out: #{te.inspect}&quot;</span>
+88:     <span class="ruby-keyword kw">end</span>
+89:     <span class="ruby-ivar">@schema</span> = <span class="ruby-keyword kw">nil</span>
+90:     <span class="ruby-identifier">res</span>
+91:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000037"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000037'>
+
+
+drop_index
+
+(ks_name, cf_name, c_name)
+
+</a>
+</h3>
+
+<p class="source_link" id="M000037-show-link"><a onclick="toggle('M000037-source'); toggleText('M000037-link'); return false;" href="#" id="M000037-link">Show source...</a></p><div class="source" id="M000037-source"><pre>     <span class="ruby-comment cmt"># File lib/cassandra/0.7/cassandra.rb, line 202</span>
+202:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">drop_index</span>(<span class="ruby-identifier">ks_name</span>, <span class="ruby-identifier">cf_name</span>, <span class="ruby-identifier">c_name</span>)
+203:     <span class="ruby-identifier">cf_def</span> = <span class="ruby-identifier">client</span>.<span class="ruby-identifier">describe_keyspace</span>(<span class="ruby-identifier">ks_name</span>).<span class="ruby-identifier">cf_defs</span>.<span class="ruby-identifier">find</span>{<span class="ruby-operator">|</span><span class="ruby-identifier">x</span><span class="ruby-operator">|</span> <span class="ruby-identifier">x</span>.<span class="ruby-identifier">name</span> <span class="ruby-operator">==</span> <span class="ruby-identifier">cf_name</span>}
+204:     <span class="ruby-keyword kw">if</span> <span class="ruby-operator">!</span><span class="ruby-identifier">cf_def</span>.<span class="ruby-identifier">nil?</span> <span class="ruby-keyword kw">and</span> <span class="ruby-identifier">cf_def</span>.<span class="ruby-identifier">column_metadata</span>.<span class="ruby-identifier">find</span>{<span class="ruby-operator">|</span><span class="ruby-identifier">x</span><span class="ruby-operator">|</span> <span class="ruby-identifier">x</span>.<span class="ruby-identifier">name</span> <span class="ruby-operator">==</span> <span class="ruby-identifier">c_name</span>}
+205:       <span class="ruby-identifier">cf_def</span>.<span class="ruby-identifier">column_metadata</span>.<span class="ruby-identifier">delete_if</span>{<span class="ruby-operator">|</span><span class="ruby-identifier">x</span><span class="ruby-operator">|</span> <span class="ruby-identifier">x</span>.<span class="ruby-identifier">name</span> <span class="ruby-operator">==</span> <span class="ruby-identifier">c_name</span>}
+206:       <span class="ruby-identifier">update_column_family</span>(<span class="ruby-identifier">cf_def</span>)
+207:     <span class="ruby-keyword kw">end</span>
+208:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000032"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000032'>
+
+
+drop_keyspace
+
+(ks_name)
+
+</a>
+</h3>
+
+<p class="source_link" id="M000032-show-link"><a onclick="toggle('M000032-source'); toggleText('M000032-link'); return false;" href="#" id="M000032-link">Show source...</a></p><div class="source" id="M000032-source"><pre>     <span class="ruby-comment cmt"># File lib/cassandra/0.7/cassandra.rb, line 125</span>
+125:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">drop_keyspace</span>(<span class="ruby-identifier">ks_name</span>)
+126:     <span class="ruby-keyword kw">begin</span>
+127:       <span class="ruby-identifier">res</span> = <span class="ruby-identifier">client</span>.<span class="ruby-identifier">system_drop_keyspace</span>(<span class="ruby-identifier">ks_name</span>)
+128:     <span class="ruby-keyword kw">rescue</span> <span class="ruby-constant">CassandraThrift</span><span class="ruby-operator">::</span><span class="ruby-constant">TimedOutException</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">toe</span>
+129:       <span class="ruby-identifier">puts</span> <span class="ruby-node">&quot;Timed out: #{toe.inspect}&quot;</span>
+130:     <span class="ruby-keyword kw">rescue</span> <span class="ruby-constant">Thrift</span><span class="ruby-operator">::</span><span class="ruby-constant">TransportException</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">te</span>
+131:       <span class="ruby-identifier">puts</span> <span class="ruby-node">&quot;Timed out: #{te.inspect}&quot;</span>
+132:     <span class="ruby-keyword kw">end</span>
+133:     <span class="ruby-identifier">keyspace</span> = <span class="ruby-value str">&quot;system&quot;</span> <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">ks_name</span>.<span class="ruby-identifier">eql?</span>(<span class="ruby-ivar">@keyspace</span>)
+134:     <span class="ruby-ivar">@keyspaces</span> = <span class="ruby-keyword kw">nil</span>
+135:     <span class="ruby-identifier">res</span>
+136:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000059"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000059'>
+
+
+exists?
+
+(column_family, key, *columns_and_options)
+
+</a>
+</h3>
+<p>
+Return true if the column_family:key:[column]:[sub_column] path you request
+exists. Supports the <tt>:consistency</tt> option.
+</p>
+
+<p class="source_link" id="M000059-show-link"><a onclick="toggle('M000059-source'); toggleText('M000059-link'); return false;" href="#" id="M000059-link">Show source...</a></p><div class="source" id="M000059-source"><pre>     <span class="ruby-comment cmt"># File lib/cassandra/cassandra.rb, line 209</span>
+209:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">exists?</span>(<span class="ruby-identifier">column_family</span>, <span class="ruby-identifier">key</span>, <span class="ruby-operator">*</span><span class="ruby-identifier">columns_and_options</span>)
+210:     <span class="ruby-identifier">column_family</span>, <span class="ruby-identifier">column</span>, <span class="ruby-identifier">sub_column</span>, <span class="ruby-identifier">options</span> = 
+211:       <span class="ruby-identifier">extract_and_validate_params</span>(<span class="ruby-identifier">column_family</span>, <span class="ruby-identifier">key</span>, <span class="ruby-identifier">columns_and_options</span>, <span class="ruby-constant">READ_DEFAULTS</span>)
+212:     <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">column</span>
+213:       <span class="ruby-identifier">_multiget</span>(<span class="ruby-identifier">column_family</span>, [<span class="ruby-identifier">key</span>], <span class="ruby-identifier">column</span>, <span class="ruby-identifier">sub_column</span>, <span class="ruby-value">1</span>, <span class="ruby-keyword kw">nil</span>, <span class="ruby-keyword kw">nil</span>, <span class="ruby-keyword kw">nil</span>, <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:consistency</span>])[<span class="ruby-identifier">key</span>]
+214:     <span class="ruby-keyword kw">else</span>
+215:       <span class="ruby-identifier">_multiget</span>(<span class="ruby-identifier">column_family</span>, [<span class="ruby-identifier">key</span>], <span class="ruby-keyword kw">nil</span>, <span class="ruby-keyword kw">nil</span>, <span class="ruby-value">1</span>, <span class="ruby-value str">''</span>, <span class="ruby-value str">''</span>, <span class="ruby-keyword kw">false</span>, <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:consistency</span>])[<span class="ruby-identifier">key</span>]
+216:     <span class="ruby-keyword kw">end</span>
+217:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000057"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000057'>
+
+
+get
+
+(column_family, key, *columns_and_options)
+
+</a>
+</h3>
+<p>
+Return a hash (actually, a Cassandra::OrderedHash) or a single value
+representing the element at the column_family:key:[column]:[sub_column]
+path you request. Supports options <tt>:count</tt>, <tt>:start</tt>,
+<tt>:finish</tt>, <tt>:reversed</tt>, and <tt>:consistency</tt>.
+</p>
+
+<p class="source_link" id="M000057-show-link"><a onclick="toggle('M000057-source'); toggleText('M000057-link'); return false;" href="#" id="M000057-link">Show source...</a></p><div class="source" id="M000057-source"><pre>     <span class="ruby-comment cmt"># File lib/cassandra/cassandra.rb, line 190</span>
+190:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">get</span>(<span class="ruby-identifier">column_family</span>, <span class="ruby-identifier">key</span>, <span class="ruby-operator">*</span><span class="ruby-identifier">columns_and_options</span>)
+191:     <span class="ruby-identifier">multi_get</span>(<span class="ruby-identifier">column_family</span>, [<span class="ruby-identifier">key</span>], <span class="ruby-operator">*</span><span class="ruby-identifier">columns_and_options</span>)[<span class="ruby-identifier">key</span>]
+192:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000055"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000055'>
+
+
+get_columns
+
+(column_family, key, *columns_and_options)
+
+</a>
+</h3>
+<p>
+Return a list of single values for the elements at the
+column_family:key:column[s]:[sub_columns] path you request. Supports the
+<tt>:consistency</tt> option.
+</p>
+
+<p class="source_link" id="M000055-show-link"><a onclick="toggle('M000055-source'); toggleText('M000055-link'); return false;" href="#" id="M000055-link">Show source...</a></p><div class="source" id="M000055-source"><pre>     <span class="ruby-comment cmt"># File lib/cassandra/cassandra.rb, line 173</span>
+173:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">get_columns</span>(<span class="ruby-identifier">column_family</span>, <span class="ruby-identifier">key</span>, <span class="ruby-operator">*</span><span class="ruby-identifier">columns_and_options</span>)
+174:     <span class="ruby-identifier">column_family</span>, <span class="ruby-identifier">columns</span>, <span class="ruby-identifier">sub_columns</span>, <span class="ruby-identifier">options</span> = 
+175:       <span class="ruby-identifier">extract_and_validate_params</span>(<span class="ruby-identifier">column_family</span>, <span class="ruby-identifier">key</span>, <span class="ruby-identifier">columns_and_options</span>, <span class="ruby-constant">READ_DEFAULTS</span>)      
+176:     <span class="ruby-identifier">_get_columns</span>(<span class="ruby-identifier">column_family</span>, <span class="ruby-identifier">key</span>, <span class="ruby-identifier">columns</span>, <span class="ruby-identifier">sub_columns</span>, <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:consistency</span>])
+177:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000040"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000040'>
+
+
+get_indexed_slices
+
+(column_family, idx_clause, *columns_and_options)
+
+</a>
+</h3>
+<p>
+TODO: Supercolumn support.
+</p>
+
+<p class="source_link" id="M000040-show-link"><a onclick="toggle('M000040-source'); toggleText('M000040-link'); return false;" href="#" id="M000040-link">Show source...</a></p><div class="source" id="M000040-source"><pre>     <span class="ruby-comment cmt"># File lib/cassandra/0.7/cassandra.rb, line 235</span>
+235:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">get_indexed_slices</span>(<span class="ruby-identifier">column_family</span>, <span class="ruby-identifier">idx_clause</span>, <span class="ruby-operator">*</span><span class="ruby-identifier">columns_and_options</span>)
+236:     <span class="ruby-identifier">column_family</span>, <span class="ruby-identifier">columns</span>, <span class="ruby-identifier">_</span>, <span class="ruby-identifier">options</span> =
+237:       <span class="ruby-identifier">extract_and_validate_params</span>(<span class="ruby-identifier">column_family</span>, [], <span class="ruby-identifier">columns_and_options</span>, <span class="ruby-constant">READ_DEFAULTS</span>)
+238:     <span class="ruby-identifier">_get_indexed_slices</span>(<span class="ruby-identifier">column_family</span>, <span class="ruby-identifier">idx_clause</span>, <span class="ruby-identifier">columns</span>, <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:count</span>], <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:start</span>],
+239:       <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:finish</span>], <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:reversed</span>], <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:consistency</span>])
+240:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000060"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000060'>
+
+
+get_range
+
+(column_family, options = {})
+
+</a>
+</h3>
+<p>
+Return a list of keys in the column_family you request. Requires the table
+to be partitioned with OrderPreservingHash. Supports the <tt>:count</tt>,
+<tt>:start</tt>, <tt>:finish</tt>, and <tt>:consistency</tt> options.
+</p>
+
+<p class="source_link" id="M000060-show-link"><a onclick="toggle('M000060-source'); toggleText('M000060-link'); return false;" href="#" id="M000060-link">Show source...</a></p><div class="source" id="M000060-source"><pre>     <span class="ruby-comment cmt"># File lib/cassandra/cassandra.rb, line 223</span>
+223:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">get_range</span>(<span class="ruby-identifier">column_family</span>, <span class="ruby-identifier">options</span> = {})
+224:     <span class="ruby-identifier">column_family</span>, <span class="ruby-identifier">_</span>, <span class="ruby-identifier">_</span>, <span class="ruby-identifier">options</span> = 
+225:       <span class="ruby-identifier">extract_and_validate_params</span>(<span class="ruby-identifier">column_family</span>, <span class="ruby-value str">&quot;&quot;</span>, [<span class="ruby-identifier">options</span>], <span class="ruby-constant">READ_DEFAULTS</span>)
+226:     <span class="ruby-identifier">_get_range</span>(<span class="ruby-identifier">column_family</span>, <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:start</span>].<span class="ruby-identifier">to_s</span>, <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:finish</span>].<span class="ruby-identifier">to_s</span>, <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:count</span>], <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:consistency</span>])
+227:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000051"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000051'>
+
+
+insert
+
+(column_family, key, hash, options = {})
+
+</a>
+</h3>
+<p>
+Insert a row for a key. Pass a flat hash for a regular column family, and a
+nested hash for a super column family. Supports the <tt>:consistency</tt>,
+<tt>:timestamp</tt> and <tt>:ttl</tt> options.
+</p>
+
+<p class="source_link" id="M000051-show-link"><a onclick="toggle('M000051-source'); toggleText('M000051-link'); return false;" href="#" id="M000051-link">Show source...</a></p><div class="source" id="M000051-source"><pre>     <span class="ruby-comment cmt"># File lib/cassandra/cassandra.rb, line 114</span>
+114:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">insert</span>(<span class="ruby-identifier">column_family</span>, <span class="ruby-identifier">key</span>, <span class="ruby-identifier">hash</span>, <span class="ruby-identifier">options</span> = {})
+115:     <span class="ruby-identifier">column_family</span>, <span class="ruby-identifier">_</span>, <span class="ruby-identifier">_</span>, <span class="ruby-identifier">options</span> = <span class="ruby-identifier">extract_and_validate_params</span>(<span class="ruby-identifier">column_family</span>, <span class="ruby-identifier">key</span>, [<span class="ruby-identifier">options</span>], <span class="ruby-constant">WRITE_DEFAULTS</span>)
+116: 
+117:     <span class="ruby-identifier">timestamp</span> = <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:timestamp</span>] <span class="ruby-operator">||</span> <span class="ruby-constant">Time</span>.<span class="ruby-identifier">stamp</span>
+118:     <span class="ruby-identifier">mutation_map</span> = <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">is_super</span>(<span class="ruby-identifier">column_family</span>)
+119:       {
+120:         <span class="ruby-identifier">key</span> =<span class="ruby-operator">&gt;</span> {
+121:           <span class="ruby-identifier">column_family</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">hash</span>.<span class="ruby-identifier">collect</span>{<span class="ruby-operator">|</span><span class="ruby-identifier">k</span>,<span class="ruby-identifier">v</span><span class="ruby-operator">|</span> <span class="ruby-identifier">_super_insert_mutation</span>(<span class="ruby-identifier">column_family</span>, <span class="ruby-identifier">k</span>, <span class="ruby-identifier">v</span>, <span class="ruby-identifier">timestamp</span>, <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:ttl</span>]) }
+122:         }
+123:       }
+124:     <span class="ruby-keyword kw">else</span>
+125:       {
+126:         <span class="ruby-identifier">key</span> =<span class="ruby-operator">&gt;</span> {
+127:           <span class="ruby-identifier">column_family</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">hash</span>.<span class="ruby-identifier">collect</span>{<span class="ruby-operator">|</span><span class="ruby-identifier">k</span>,<span class="ruby-identifier">v</span><span class="ruby-operator">|</span> <span class="ruby-identifier">_standard_insert_mutation</span>(<span class="ruby-identifier">column_family</span>, <span class="ruby-identifier">k</span>, <span class="ruby-identifier">v</span>, <span class="ruby-identifier">timestamp</span>, <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:ttl</span>])}
+128:         }
+129:       }
+130:     <span class="ruby-keyword kw">end</span>
+131: 
+132:     <span class="ruby-ivar">@batch</span> <span class="ruby-operator">?</span> <span class="ruby-ivar">@batch</span> <span class="ruby-operator">&lt;&lt;</span> [<span class="ruby-identifier">mutation_map</span>, <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:consistency</span>]] <span class="ruby-operator">:</span> <span class="ruby-identifier">_mutate</span>(<span class="ruby-identifier">mutation_map</span>, <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:consistency</span>])
+133:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000016"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000016'>
+
+
+inspect
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000016-show-link"><a onclick="toggle('M000016-source'); toggleText('M000016-link'); return false;" href="#" id="M000016-link">Show source...</a></p><div class="source" id="M000016-source"><pre>    <span class="ruby-comment cmt"># File lib/cassandra/0.7/cassandra.rb, line 13</span>
+13:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">inspect</span>
+14:     <span class="ruby-node">&quot;#&lt;Cassandra:#{object_id}, @keyspace=#{keyspace.inspect}, @schema={#{
+15:       Array(schema(false).cf_defs).map {|cfdef| &quot;:#{cfdef.name} =&gt; #{cfdef.column_type}&quot;}.join(', ')
+16:     }}, @servers=#{servers.inspect}&gt;&quot;</span>
+17:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000050"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000050'>
+
+
+inspect
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000050-show-link"><a onclick="toggle('M000050-source'); toggleText('M000050-link'); return false;" href="#" id="M000050-link">Show source...</a></p><div class="source" id="M000050-source"><pre>     <span class="ruby-comment cmt"># File lib/cassandra/cassandra.rb, line 103</span>
+103:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">inspect</span>
+104:     <span class="ruby-node">&quot;#&lt;Cassandra:#{object_id}, @keyspace=#{keyspace.inspect}, @schema={#{
+105:       schema(false).map {|name, hash| &quot;:#{name} =&gt; #{hash['type'].inspect}&quot;}.join(', ')
+106:     }}, @servers=#{servers.inspect}&gt;&quot;</span>
+107:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000017"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000017'>
+
+
+keyspace=
+
+(ks)
+
+</a>
+</h3>
+
+<p class="source_link" id="M000017-show-link"><a onclick="toggle('M000017-source'); toggleText('M000017-link'); return false;" href="#" id="M000017-link">Show source...</a></p><div class="source" id="M000017-source"><pre>    <span class="ruby-comment cmt"># File lib/cassandra/0.7/cassandra.rb, line 19</span>
+19:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">keyspace=</span>(<span class="ruby-identifier">ks</span>)
+20:     <span class="ruby-identifier">client</span>.<span class="ruby-identifier">set_keyspace</span>(<span class="ruby-identifier">ks</span>) <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">check_keyspace</span>(<span class="ruby-identifier">ks</span>)
+21:     <span class="ruby-ivar">@schema</span> = <span class="ruby-keyword kw">nil</span>; <span class="ruby-ivar">@keyspace</span> = <span class="ruby-identifier">ks</span>
+22:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000018"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000018'>
+
+
+keyspaces
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000018-show-link"><a onclick="toggle('M000018-source'); toggleText('M000018-link'); return false;" href="#" id="M000018-link">Show source...</a></p><div class="source" id="M000018-source"><pre>    <span class="ruby-comment cmt"># File lib/cassandra/0.7/cassandra.rb, line 24</span>
+24:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">keyspaces</span>
+25:     <span class="ruby-identifier">client</span>.<span class="ruby-identifier">describe_keyspaces</span>.<span class="ruby-identifier">to_a</span>.<span class="ruby-identifier">collect</span> {<span class="ruby-operator">|</span><span class="ruby-identifier">ksdef</span><span class="ruby-operator">|</span> <span class="ruby-identifier">ksdef</span>.<span class="ruby-identifier">name</span> }
+26:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000048"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000048'>
+
+
+keyspaces
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000048-show-link"><a onclick="toggle('M000048-source'); toggleText('M000048-link'); return false;" href="#" id="M000048-link">Show source...</a></p><div class="source" id="M000048-source"><pre>    <span class="ruby-comment cmt"># File lib/cassandra/cassandra.rb, line 93</span>
+93:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">keyspaces</span>
+94:     <span class="ruby-ivar">@keyspaces</span> <span class="ruby-operator">||=</span> <span class="ruby-identifier">client</span>.<span class="ruby-identifier">describe_keyspaces</span>()
+95:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000049"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000049'>
+
+
+login!
+
+(username, password)
+
+</a>
+</h3>
+
+<p class="source_link" id="M000049-show-link"><a onclick="toggle('M000049-source'); toggleText('M000049-link'); return false;" href="#" id="M000049-link">Show source...</a></p><div class="source" id="M000049-source"><pre>     <span class="ruby-comment cmt"># File lib/cassandra/cassandra.rb, line 97</span>
+ 97:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">login!</span>(<span class="ruby-identifier">username</span>, <span class="ruby-identifier">password</span>)
+ 98:     <span class="ruby-ivar">@auth_request</span> = <span class="ruby-constant">CassandraThrift</span><span class="ruby-operator">::</span><span class="ruby-constant">AuthenticationRequest</span>.<span class="ruby-identifier">new</span>
+ 99:     <span class="ruby-ivar">@auth_request</span>.<span class="ruby-identifier">credentials</span> = {<span class="ruby-value str">'username'</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">username</span>, <span class="ruby-value str">'password'</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">password</span>}
+100:     <span class="ruby-identifier">client</span>.<span class="ruby-identifier">login</span>(<span class="ruby-ivar">@keyspace</span>, <span class="ruby-ivar">@auth_request</span>)
+101:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000015"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000015'>
+
+
+login!
+
+(username, password)
+
+</a>
+</h3>
+
+<p class="source_link" id="M000015-show-link"><a onclick="toggle('M000015-source'); toggleText('M000015-link'); return false;" href="#" id="M000015-link">Show source...</a></p><div class="source" id="M000015-source"><pre>    <span class="ruby-comment cmt"># File lib/cassandra/0.7/cassandra.rb, line 7</span>
+ 7:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">login!</span>(<span class="ruby-identifier">username</span>, <span class="ruby-identifier">password</span>)
+ 8:     <span class="ruby-ivar">@auth_request</span> = <span class="ruby-constant">CassandraThrift</span><span class="ruby-operator">::</span><span class="ruby-constant">AuthenticationRequest</span>.<span class="ruby-identifier">new</span>
+ 9:     <span class="ruby-ivar">@auth_request</span>.<span class="ruby-identifier">credentials</span> = {<span class="ruby-value str">'username'</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">username</span>, <span class="ruby-value str">'password'</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">password</span>}
+10:     <span class="ruby-identifier">client</span>.<span class="ruby-identifier">login</span>(<span class="ruby-ivar">@auth_request</span>)
+11:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000054"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000054'>
+
+
+multi_count_columns
+
+(column_family, keys, *options)
+
+</a>
+</h3>
+<p>
+Multi-key <a href="Cassandra.html#M000021">version</a> of <a
+href="Cassandra.html#M000053">Cassandra#count_columns</a>. Supports options
+<tt>:count</tt>, <tt>:start</tt>, <tt>:finish</tt>, <tt>:reversed</tt>, and
+<tt>:consistency</tt>. FIXME Not real multi; needs server support
+</p>
+
+<p class="source_link" id="M000054-show-link"><a onclick="toggle('M000054-source'); toggleText('M000054-link'); return false;" href="#" id="M000054-link">Show source...</a></p><div class="source" id="M000054-source"><pre>     <span class="ruby-comment cmt"># File lib/cassandra/cassandra.rb, line 166</span>
+166:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">multi_count_columns</span>(<span class="ruby-identifier">column_family</span>, <span class="ruby-identifier">keys</span>, <span class="ruby-operator">*</span><span class="ruby-identifier">options</span>)
+167:     <span class="ruby-constant">OrderedHash</span>[<span class="ruby-operator">*</span><span class="ruby-identifier">keys</span>.<span class="ruby-identifier">map</span> { <span class="ruby-operator">|</span><span class="ruby-identifier">key</span><span class="ruby-operator">|</span> [<span class="ruby-identifier">key</span>, <span class="ruby-identifier">count_columns</span>(<span class="ruby-identifier">column_family</span>, <span class="ruby-identifier">key</span>, <span class="ruby-operator">*</span><span class="ruby-identifier">options</span>)] }.<span class="ruby-identifier">_flatten_once</span>]
+168:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000058"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000058'>
+
+
+multi_get
+
+(column_family, keys, *columns_and_options)
+
+</a>
+</h3>
+<p>
+Multi-key <a href="Cassandra.html#M000021">version</a> of <a
+href="Cassandra.html#M000057">Cassandra#get</a>. Supports options
+<tt>:count</tt>, <tt>:start</tt>, <tt>:finish</tt>, <tt>:reversed</tt>, and
+<tt>:consistency</tt>.
+</p>
+
+<p class="source_link" id="M000058-show-link"><a onclick="toggle('M000058-source'); toggleText('M000058-link'); return false;" href="#" id="M000058-link">Show source...</a></p><div class="source" id="M000058-source"><pre>     <span class="ruby-comment cmt"># File lib/cassandra/cassandra.rb, line 196</span>
+196:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">multi_get</span>(<span class="ruby-identifier">column_family</span>, <span class="ruby-identifier">keys</span>, <span class="ruby-operator">*</span><span class="ruby-identifier">columns_and_options</span>)
+197:     <span class="ruby-identifier">column_family</span>, <span class="ruby-identifier">column</span>, <span class="ruby-identifier">sub_column</span>, <span class="ruby-identifier">options</span> = 
+198:       <span class="ruby-identifier">extract_and_validate_params</span>(<span class="ruby-identifier">column_family</span>, <span class="ruby-identifier">keys</span>, <span class="ruby-identifier">columns_and_options</span>, <span class="ruby-constant">READ_DEFAULTS</span>)
+199: 
+200:     <span class="ruby-identifier">hash</span> = <span class="ruby-identifier">_multiget</span>(<span class="ruby-identifier">column_family</span>, <span class="ruby-identifier">keys</span>, <span class="ruby-identifier">column</span>, <span class="ruby-identifier">sub_column</span>, <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:count</span>], <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:start</span>], <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:finish</span>], <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:reversed</span>], <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:consistency</span>])
+201:     <span class="ruby-comment cmt"># Restore order</span>
+202:     <span class="ruby-identifier">ordered_hash</span> = <span class="ruby-constant">OrderedHash</span>.<span class="ruby-identifier">new</span>
+203:     <span class="ruby-identifier">keys</span>.<span class="ruby-identifier">each</span> { <span class="ruby-operator">|</span><span class="ruby-identifier">key</span><span class="ruby-operator">|</span> <span class="ruby-identifier">ordered_hash</span>[<span class="ruby-identifier">key</span>] = <span class="ruby-identifier">hash</span>[<span class="ruby-identifier">key</span>] <span class="ruby-operator">||</span> (<span class="ruby-constant">OrderedHash</span>.<span class="ruby-identifier">new</span> <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">is_super</span>(<span class="ruby-identifier">column_family</span>) <span class="ruby-keyword kw">and</span> <span class="ruby-operator">!</span><span class="ruby-identifier">sub_column</span>) }
+204:     <span class="ruby-identifier">ordered_hash</span>
+205:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000056"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000056'>
+
+
+multi_get_columns
+
+(column_family, keys, *options)
+
+</a>
+</h3>
+<p>
+Multi-key <a href="Cassandra.html#M000021">version</a> of <a
+href="Cassandra.html#M000055">Cassandra#get_columns</a>. Supports the
+<tt>:consistency</tt> option. FIXME Not real multi; needs to use a Column
+predicate
+</p>
+
+<p class="source_link" id="M000056-show-link"><a onclick="toggle('M000056-source'); toggleText('M000056-link'); return false;" href="#" id="M000056-link">Show source...</a></p><div class="source" id="M000056-source"><pre>     <span class="ruby-comment cmt"># File lib/cassandra/cassandra.rb, line 182</span>
+182:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">multi_get_columns</span>(<span class="ruby-identifier">column_family</span>, <span class="ruby-identifier">keys</span>, <span class="ruby-operator">*</span><span class="ruby-identifier">options</span>)
+183:     <span class="ruby-constant">OrderedHash</span>[<span class="ruby-operator">*</span><span class="ruby-identifier">keys</span>.<span class="ruby-identifier">map</span> { <span class="ruby-operator">|</span><span class="ruby-identifier">key</span><span class="ruby-operator">|</span> [<span class="ruby-identifier">key</span>, <span class="ruby-identifier">get_columns</span>(<span class="ruby-identifier">column_family</span>, <span class="ruby-identifier">key</span>, <span class="ruby-operator">*</span><span class="ruby-identifier">options</span>)] }.<span class="ruby-identifier">_flatten_once</span>]
+184:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000024"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000024'>
+
+
+partitioner
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000024-show-link"><a onclick="toggle('M000024-source'); toggleText('M000024-link'); return false;" href="#" id="M000024-link">Show source...</a></p><div class="source" id="M000024-source"><pre>    <span class="ruby-comment cmt"># File lib/cassandra/0.7/cassandra.rb, line 52</span>
+52:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">partitioner</span>
+53:     <span class="ruby-identifier">client</span>.<span class="ruby-identifier">describe_partitioner</span>()
+54:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000052"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000052'>
+
+
+remove
+
+(column_family, key, *columns_and_options)
+
+</a>
+</h3>
+<p>
+_mutate the element at the column_family:key:[column]:[sub_column] path you
+request. Supports the <tt>:consistency</tt> and <tt>:timestamp</tt>
+options.
+</p>
+
+<p class="source_link" id="M000052-show-link"><a onclick="toggle('M000052-source'); toggleText('M000052-link'); return false;" href="#" id="M000052-link">Show source...</a></p><div class="source" id="M000052-source"><pre>     <span class="ruby-comment cmt"># File lib/cassandra/cassandra.rb, line 141</span>
+141:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">remove</span>(<span class="ruby-identifier">column_family</span>, <span class="ruby-identifier">key</span>, <span class="ruby-operator">*</span><span class="ruby-identifier">columns_and_options</span>)
+142:     <span class="ruby-identifier">column_family</span>, <span class="ruby-identifier">column</span>, <span class="ruby-identifier">sub_column</span>, <span class="ruby-identifier">options</span> = <span class="ruby-identifier">extract_and_validate_params</span>(<span class="ruby-identifier">column_family</span>, <span class="ruby-identifier">key</span>, <span class="ruby-identifier">columns_and_options</span>, <span class="ruby-constant">WRITE_DEFAULTS</span>)
+143: 
+144:     <span class="ruby-identifier">args</span> = {<span class="ruby-identifier">:column_family</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">column_family</span>}
+145:     <span class="ruby-identifier">columns</span> = <span class="ruby-identifier">is_super</span>(<span class="ruby-identifier">column_family</span>) <span class="ruby-operator">?</span> {<span class="ruby-identifier">:super_column</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">column</span>, <span class="ruby-identifier">:column</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">sub_column</span>} <span class="ruby-operator">:</span> {<span class="ruby-identifier">:column</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">column</span>}
+146:     <span class="ruby-identifier">column_path</span> = <span class="ruby-constant">CassandraThrift</span><span class="ruby-operator">::</span><span class="ruby-constant">ColumnPath</span>.<span class="ruby-identifier">new</span>(<span class="ruby-identifier">args</span>.<span class="ruby-identifier">merge</span>(<span class="ruby-identifier">columns</span>))
+147: 
+148:     <span class="ruby-identifier">mutation</span> = [<span class="ruby-identifier">:remove</span>, [<span class="ruby-identifier">key</span>, <span class="ruby-identifier">column_path</span>, <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:timestamp</span>] <span class="ruby-operator">||</span> <span class="ruby-constant">Time</span>.<span class="ruby-identifier">stamp</span>, <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:consistency</span>]]]
+149: 
+150:     <span class="ruby-ivar">@batch</span> <span class="ruby-operator">?</span> <span class="ruby-ivar">@batch</span> <span class="ruby-operator">&lt;&lt;</span> <span class="ruby-identifier">mutation</span> <span class="ruby-operator">:</span> <span class="ruby-identifier">_remove</span>(<span class="ruby-operator">*</span><span class="ruby-identifier">mutation</span>[<span class="ruby-value">1</span>])
+151:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000029"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000029'>
+
+
+rename_column_family
+
+(old_name, new_name)
+
+</a>
+</h3>
+
+<p class="source_link" id="M000029-show-link"><a onclick="toggle('M000029-source'); toggleText('M000029-link'); return false;" href="#" id="M000029-link">Show source...</a></p><div class="source" id="M000029-source"><pre>     <span class="ruby-comment cmt"># File lib/cassandra/0.7/cassandra.rb, line 93</span>
+ 93:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">rename_column_family</span>(<span class="ruby-identifier">old_name</span>, <span class="ruby-identifier">new_name</span>)
+ 94:     <span class="ruby-keyword kw">begin</span>
+ 95:       <span class="ruby-identifier">res</span> = <span class="ruby-identifier">client</span>.<span class="ruby-identifier">system_rename_column_family</span>(<span class="ruby-identifier">old_name</span>, <span class="ruby-identifier">new_name</span>)
+ 96:     <span class="ruby-keyword kw">rescue</span> <span class="ruby-constant">CassandraThrift</span><span class="ruby-operator">::</span><span class="ruby-constant">TimedOutException</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">te</span>
+ 97:       <span class="ruby-identifier">puts</span> <span class="ruby-node">&quot;Timed out: #{te.inspect}&quot;</span>
+ 98:     <span class="ruby-keyword kw">end</span>
+ 99:     <span class="ruby-ivar">@schema</span> = <span class="ruby-keyword kw">nil</span>
+100:     <span class="ruby-identifier">res</span>
+101:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000033"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000033'>
+
+
+rename_keyspace
+
+(old_name, new_name)
+
+</a>
+</h3>
+
+<p class="source_link" id="M000033-show-link"><a onclick="toggle('M000033-source'); toggleText('M000033-link'); return false;" href="#" id="M000033-link">Show source...</a></p><div class="source" id="M000033-source"><pre>     <span class="ruby-comment cmt"># File lib/cassandra/0.7/cassandra.rb, line 138</span>
+138:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">rename_keyspace</span>(<span class="ruby-identifier">old_name</span>, <span class="ruby-identifier">new_name</span>)
+139:     <span class="ruby-keyword kw">begin</span>
+140:       <span class="ruby-identifier">res</span> = <span class="ruby-identifier">client</span>.<span class="ruby-identifier">system_rename_keyspace</span>(<span class="ruby-identifier">old_name</span>, <span class="ruby-identifier">new_name</span>)
+141:     <span class="ruby-keyword kw">rescue</span> <span class="ruby-constant">CassandraThrift</span><span class="ruby-operator">::</span><span class="ruby-constant">TimedOutException</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">toe</span>
+142:       <span class="ruby-identifier">puts</span> <span class="ruby-node">&quot;Timed out: #{toe.inspect}&quot;</span>
+143:     <span class="ruby-keyword kw">rescue</span> <span class="ruby-constant">Thrift</span><span class="ruby-operator">::</span><span class="ruby-constant">TransportException</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">te</span>
+144:       <span class="ruby-identifier">puts</span> <span class="ruby-node">&quot;Timed out: #{te.inspect}&quot;</span>
+145:     <span class="ruby-keyword kw">end</span>
+146:     <span class="ruby-identifier">keyspace</span> = <span class="ruby-identifier">new_name</span> <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">old_name</span>.<span class="ruby-identifier">eql?</span>(<span class="ruby-ivar">@keyspace</span>)
+147:     <span class="ruby-ivar">@keyspaces</span> = <span class="ruby-keyword kw">nil</span>
+148:     <span class="ruby-identifier">res</span>
+149:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000023"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000023'>
+
+
+ring
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000023-show-link"><a onclick="toggle('M000023-source'); toggleText('M000023-link'); return false;" href="#" id="M000023-link">Show source...</a></p><div class="source" id="M000023-source"><pre>    <span class="ruby-comment cmt"># File lib/cassandra/0.7/cassandra.rb, line 48</span>
+48:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">ring</span>
+49:     <span class="ruby-identifier">client</span>.<span class="ruby-identifier">describe_ring</span>(<span class="ruby-ivar">@keyspace</span>)
+50:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000019"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000019'>
+
+
+schema
+
+(load=true)
+
+</a>
+</h3>
+
+<p class="source_link" id="M000019-show-link"><a onclick="toggle('M000019-source'); toggleText('M000019-link'); return false;" href="#" id="M000019-link">Show source...</a></p><div class="source" id="M000019-source"><pre>    <span class="ruby-comment cmt"># File lib/cassandra/0.7/cassandra.rb, line 28</span>
+28:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">schema</span>(<span class="ruby-identifier">load</span>=<span class="ruby-keyword kw">true</span>)
+29:     <span class="ruby-keyword kw">if</span> <span class="ruby-operator">!</span><span class="ruby-identifier">load</span> <span class="ruby-operator">&amp;&amp;</span> <span class="ruby-operator">!</span><span class="ruby-ivar">@schema</span>
+30:       <span class="ruby-constant">Cassandra</span><span class="ruby-operator">::</span><span class="ruby-constant">Keyspace</span>.<span class="ruby-identifier">new</span>
+31:     <span class="ruby-keyword kw">else</span>
+32:       <span class="ruby-ivar">@schema</span> <span class="ruby-operator">||=</span> <span class="ruby-identifier">client</span>.<span class="ruby-identifier">describe_keyspace</span>(<span class="ruby-ivar">@keyspace</span>)
+33:     <span class="ruby-keyword kw">end</span>
+34:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000020"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000020'>
+
+
+schema_agreement?
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000020-show-link"><a onclick="toggle('M000020-source'); toggleText('M000020-link'); return false;" href="#" id="M000020-link">Show source...</a></p><div class="source" id="M000020-source"><pre>    <span class="ruby-comment cmt"># File lib/cassandra/0.7/cassandra.rb, line 36</span>
+36:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">schema_agreement?</span>
+37:     <span class="ruby-identifier">client</span>.<span class="ruby-identifier">describe_schema_versions</span>().<span class="ruby-identifier">length</span> <span class="ruby-operator">==</span> <span class="ruby-value">1</span>
+38:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000025"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000025'>
+
+
+truncate!
+
+(column_family)
+
+</a>
+</h3>
+<p>
+Remove all rows in the column family you request.
+</p>
+
+<p class="source_link" id="M000025-show-link"><a onclick="toggle('M000025-source'); toggleText('M000025-link'); return false;" href="#" id="M000025-link">Show source...</a></p><div class="source" id="M000025-source"><pre>    <span class="ruby-comment cmt"># File lib/cassandra/0.7/cassandra.rb, line 59</span>
+59:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">truncate!</span>(<span class="ruby-identifier">column_family</span>)
+60:     <span class="ruby-comment cmt">#each_key(column_family) do |key|</span>
+61:     <span class="ruby-comment cmt">#  remove(column_family, key, options)</span>
+62:     <span class="ruby-comment cmt">#end</span>
+63:     <span class="ruby-identifier">client</span>.<span class="ruby-identifier">truncate</span>(<span class="ruby-identifier">column_family</span>)
+64:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000030"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000030'>
+
+
+update_column_family
+
+(cf_def)
+
+</a>
+</h3>
+
+<p class="source_link" id="M000030-show-link"><a onclick="toggle('M000030-source'); toggleText('M000030-link'); return false;" href="#" id="M000030-link">Show source...</a></p><div class="source" id="M000030-source"><pre>     <span class="ruby-comment cmt"># File lib/cassandra/0.7/cassandra.rb, line 103</span>
+103:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">update_column_family</span>(<span class="ruby-identifier">cf_def</span>)
+104:     <span class="ruby-keyword kw">begin</span>
+105:       <span class="ruby-identifier">res</span> = <span class="ruby-identifier">client</span>.<span class="ruby-identifier">system_update_column_family</span>(<span class="ruby-identifier">cf_def</span>)
+106:     <span class="ruby-keyword kw">rescue</span> <span class="ruby-constant">CassandraThrift</span><span class="ruby-operator">::</span><span class="ruby-constant">TimedOutException</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">te</span>
+107:       <span class="ruby-identifier">puts</span> <span class="ruby-node">&quot;Timed out: #{te.inspect}&quot;</span>
+108:     <span class="ruby-keyword kw">end</span>
+109:     <span class="ruby-ivar">@schema</span> = <span class="ruby-keyword kw">nil</span>
+110:     <span class="ruby-identifier">res</span>
+111:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000034"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000034'>
+
+
+update_keyspace
+
+(ks_def)
+
+</a>
+</h3>
+
+<p class="source_link" id="M000034-show-link"><a onclick="toggle('M000034-source'); toggleText('M000034-link'); return false;" href="#" id="M000034-link">Show source...</a></p><div class="source" id="M000034-source"><pre>     <span class="ruby-comment cmt"># File lib/cassandra/0.7/cassandra.rb, line 151</span>
+151:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">update_keyspace</span>(<span class="ruby-identifier">ks_def</span>)
+152:     <span class="ruby-keyword kw">begin</span>
+153:       <span class="ruby-identifier">res</span> = <span class="ruby-identifier">client</span>.<span class="ruby-identifier">system_update_keyspace</span>(<span class="ruby-identifier">ks_def</span>)
+154:     <span class="ruby-keyword kw">rescue</span> <span class="ruby-constant">CassandraThrift</span><span class="ruby-operator">::</span><span class="ruby-constant">TimedOutException</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">toe</span>
+155:       <span class="ruby-identifier">puts</span> <span class="ruby-node">&quot;Timed out: #{toe.inspect}&quot;</span>
+156:     <span class="ruby-keyword kw">rescue</span> <span class="ruby-constant">Thrift</span><span class="ruby-operator">::</span><span class="ruby-constant">TransportException</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">te</span>
+157:       <span class="ruby-identifier">puts</span> <span class="ruby-node">&quot;Timed out: #{te.inspect}&quot;</span>
+158:     <span class="ruby-keyword kw">end</span>
+159:     <span class="ruby-ivar">@keyspaces</span> = <span class="ruby-keyword kw">nil</span>
+160:     <span class="ruby-identifier">res</span>
+161:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000021"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000021'>
+
+
+version
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000021-show-link"><a onclick="toggle('M000021-source'); toggleText('M000021-link'); return false;" href="#" id="M000021-link">Show source...</a></p><div class="source" id="M000021-source"><pre>    <span class="ruby-comment cmt"># File lib/cassandra/0.7/cassandra.rb, line 40</span>
+40:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">version</span>
+41:     <span class="ruby-identifier">client</span>.<span class="ruby-identifier">describe_version</span>()
+42:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+
+<h1>Protected Instance Methods</h1>
+
+
+<a class="small" name="M000044"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000044'>
+
+
+all_nodes
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000044-show-link"><a onclick="toggle('M000044-source'); toggleText('M000044-link'); return false;" href="#" id="M000044-link">Show source...</a></p><div class="source" id="M000044-source"><pre>     <span class="ruby-comment cmt"># File lib/cassandra/0.7/cassandra.rb, line 263</span>
+263:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">all_nodes</span>
+264:     <span class="ruby-keyword kw">if</span> <span class="ruby-ivar">@auto_discover_nodes</span> <span class="ruby-operator">&amp;&amp;</span> <span class="ruby-operator">!</span><span class="ruby-ivar">@keyspace</span>.<span class="ruby-identifier">eql?</span>(<span class="ruby-value str">&quot;system&quot;</span>)
+265:       <span class="ruby-identifier">temp_client</span> = <span class="ruby-identifier">new_client</span>
+266:       <span class="ruby-keyword kw">begin</span>
+267:         <span class="ruby-identifier">ips</span> = (<span class="ruby-identifier">temp_client</span>.<span class="ruby-identifier">describe_ring</span>(<span class="ruby-ivar">@keyspace</span>).<span class="ruby-identifier">map</span> {<span class="ruby-operator">|</span><span class="ruby-identifier">range</span><span class="ruby-operator">|</span> <span class="ruby-identifier">range</span>.<span class="ruby-identifier">endpoints</span>}).<span class="ruby-identifier">flatten</span>.<span class="ruby-identifier">uniq</span>
+268:         <span class="ruby-identifier">port</span> = <span class="ruby-ivar">@servers</span>.<span class="ruby-identifier">first</span>.<span class="ruby-identifier">split</span>(<span class="ruby-value str">':'</span>).<span class="ruby-identifier">last</span>
+269:         <span class="ruby-identifier">ips</span>.<span class="ruby-identifier">map</span>{<span class="ruby-operator">|</span><span class="ruby-identifier">ip</span><span class="ruby-operator">|</span> <span class="ruby-node">&quot;#{ip}:#{port}&quot;</span> }
+270:       <span class="ruby-keyword kw">ensure</span>
+271:         <span class="ruby-identifier">temp_client</span>.<span class="ruby-identifier">disconnect!</span>
+272:       <span class="ruby-keyword kw">end</span>
+273:     <span class="ruby-keyword kw">else</span>
+274:       <span class="ruby-ivar">@servers</span>
+275:     <span class="ruby-keyword kw">end</span>
+276:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000012"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000012'>
+
+
+all_nodes
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000012-show-link"><a onclick="toggle('M000012-source'); toggleText('M000012-link'); return false;" href="#" id="M000012-link">Show source...</a></p><div class="source" id="M000012-source"><pre>    <span class="ruby-comment cmt"># File lib/cassandra/0.6/cassandra.rb, line 53</span>
+53:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">all_nodes</span>
+54:     <span class="ruby-keyword kw">if</span> <span class="ruby-ivar">@auto_discover_nodes</span>
+55:       <span class="ruby-identifier">temp_client</span> = <span class="ruby-identifier">new_client</span>
+56:       <span class="ruby-keyword kw">begin</span>
+57:         <span class="ruby-identifier">ips</span> = <span class="ruby-operator">::</span><span class="ruby-constant">JSON</span>.<span class="ruby-identifier">parse</span>(<span class="ruby-identifier">temp_client</span>.<span class="ruby-identifier">get_string_property</span>(<span class="ruby-value str">'token map'</span>)).<span class="ruby-identifier">values</span>
+58:         <span class="ruby-identifier">port</span> = <span class="ruby-ivar">@servers</span>.<span class="ruby-identifier">first</span>.<span class="ruby-identifier">split</span>(<span class="ruby-value str">':'</span>).<span class="ruby-identifier">last</span>
+59:         <span class="ruby-identifier">ips</span>.<span class="ruby-identifier">map</span>{<span class="ruby-operator">|</span><span class="ruby-identifier">ip</span><span class="ruby-operator">|</span> <span class="ruby-node">&quot;#{ip}:#{port}&quot;</span> }
+60:       <span class="ruby-keyword kw">ensure</span> 
+61:         <span class="ruby-identifier">temp_client</span>.<span class="ruby-identifier">disconnect!</span>
+62:       <span class="ruby-keyword kw">end</span>
+63:     <span class="ruby-keyword kw">else</span>
+64:       <span class="ruby-ivar">@servers</span>
+65:     <span class="ruby-keyword kw">end</span>
+66:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000063"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000063'>
+
+
+calling_method
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000063-show-link"><a onclick="toggle('M000063-source'); toggleText('M000063-link'); return false;" href="#" id="M000063-link">Show source...</a></p><div class="source" id="M000063-source"><pre>     <span class="ruby-comment cmt"># File lib/cassandra/cassandra.rb, line 262</span>
+262:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">calling_method</span>
+263:     <span class="ruby-node">&quot;#{self.class}##{caller[0].split('`').last[0..-3]}&quot;</span>
+264:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000011"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000011'>
+
+
+check_keyspace
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000011-show-link"><a onclick="toggle('M000011-source'); toggleText('M000011-link'); return false;" href="#" id="M000011-link">Show source...</a></p><div class="source" id="M000011-source"><pre>    <span class="ruby-comment cmt"># File lib/cassandra/0.6/cassandra.rb, line 47</span>
+47:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">check_keyspace</span>
+48:     <span class="ruby-keyword kw">unless</span> (<span class="ruby-identifier">keyspaces</span> = <span class="ruby-identifier">client</span>.<span class="ruby-identifier">get_string_list_property</span>(<span class="ruby-value str">&quot;keyspaces&quot;</span>)).<span class="ruby-identifier">include?</span>(<span class="ruby-ivar">@keyspace</span>)
+49:       <span class="ruby-identifier">raise</span> <span class="ruby-constant">AccessError</span>, <span class="ruby-node">&quot;Keyspace #{@keyspace.inspect} not found. Available: #{keyspaces.inspect}&quot;</span>
+50:     <span class="ruby-keyword kw">end</span>
+51:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000043"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000043'>
+
+
+check_keyspace
+
+(ks = @keyspace)
+
+</a>
+</h3>
+
+<p class="source_link" id="M000043-show-link"><a onclick="toggle('M000043-source'); toggleText('M000043-link'); return false;" href="#" id="M000043-link">Show source...</a></p><div class="source" id="M000043-source"><pre>     <span class="ruby-comment cmt"># File lib/cassandra/0.7/cassandra.rb, line 257</span>
+257:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">check_keyspace</span>(<span class="ruby-identifier">ks</span> = <span class="ruby-ivar">@keyspace</span>)
+258:     <span class="ruby-operator">!</span>(<span class="ruby-keyword kw">unless</span> (<span class="ruby-identifier">_keyspaces</span> = <span class="ruby-identifier">keyspaces</span>()).<span class="ruby-identifier">include?</span>(<span class="ruby-identifier">ks</span>)
+259:       <span class="ruby-identifier">raise</span> <span class="ruby-constant">AccessError</span>, <span class="ruby-node">&quot;Keyspace #{ks.inspect} not found. Available: #{_keyspaces.inspect}&quot;</span>
+260:     <span class="ruby-keyword kw">end</span>)
+261:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000009"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000009'>
+
+
+client
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000009-show-link"><a onclick="toggle('M000009-source'); toggleText('M000009-link'); return false;" href="#" id="M000009-link">Show source...</a></p><div class="source" id="M000009-source"><pre>    <span class="ruby-comment cmt"># File lib/cassandra/0.6/cassandra.rb, line 36</span>
+36:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">client</span>
+37:     <span class="ruby-identifier">reconnect!</span> <span class="ruby-keyword kw">if</span> <span class="ruby-ivar">@client</span>.<span class="ruby-identifier">nil?</span>
+38:     <span class="ruby-ivar">@client</span>
+39:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000041"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000041'>
+
+
+client
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000041-show-link"><a onclick="toggle('M000041-source'); toggleText('M000041-link'); return false;" href="#" id="M000041-link">Show source...</a></p><div class="source" id="M000041-source"><pre>     <span class="ruby-comment cmt"># File lib/cassandra/0.7/cassandra.rb, line 244</span>
+244:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">client</span>
+245:     <span class="ruby-keyword kw">if</span> <span class="ruby-ivar">@client</span>.<span class="ruby-identifier">nil?</span> <span class="ruby-operator">||</span> <span class="ruby-ivar">@client</span>.<span class="ruby-identifier">current_server</span>.<span class="ruby-identifier">nil?</span>
+246:       <span class="ruby-identifier">reconnect!</span>
+247:       <span class="ruby-ivar">@client</span>.<span class="ruby-identifier">set_keyspace</span>(<span class="ruby-ivar">@keyspace</span>) <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">check_keyspace</span>
+248:     <span class="ruby-keyword kw">end</span>
+249:     <span class="ruby-ivar">@client</span>
+250:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000064"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000064'>
+
+
+compact_mutations!
+
+()
+
+</a>
+</h3>
+<p>
+Roll up queued mutations, to improve atomicity.
+</p>
+
+<p class="source_link" id="M000064-show-link"><a onclick="toggle('M000064-source'); toggleText('M000064-link'); return false;" href="#" id="M000064-link">Show source...</a></p><div class="source" id="M000064-source"><pre>     <span class="ruby-comment cmt"># File lib/cassandra/cassandra.rb, line 267</span>
+267:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">compact_mutations!</span>
+268:     <span class="ruby-comment cmt">#TODO re-do this rollup</span>
+269:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000065"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000065'>
+
+
+new_client
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000065-show-link"><a onclick="toggle('M000065-source'); toggleText('M000065-link'); return false;" href="#" id="M000065-link">Show source...</a></p><div class="source" id="M000065-source"><pre>     <span class="ruby-comment cmt"># File lib/cassandra/cassandra.rb, line 271</span>
+271:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">new_client</span>
+272:     <span class="ruby-identifier">thrift_client_class</span>.<span class="ruby-identifier">new</span>(<span class="ruby-constant">CassandraThrift</span><span class="ruby-operator">::</span><span class="ruby-constant">Cassandra</span><span class="ruby-operator">::</span><span class="ruby-constant">Client</span>, <span class="ruby-ivar">@servers</span>, <span class="ruby-ivar">@thrift_client_options</span>)
+273:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000010"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000010'>
+
+
+reconnect!
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000010-show-link"><a onclick="toggle('M000010-source'); toggleText('M000010-link'); return false;" href="#" id="M000010-link">Show source...</a></p><div class="source" id="M000010-source"><pre>    <span class="ruby-comment cmt"># File lib/cassandra/0.6/cassandra.rb, line 41</span>
+41:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">reconnect!</span>
+42:     <span class="ruby-ivar">@servers</span> = <span class="ruby-identifier">all_nodes</span>
+43:     <span class="ruby-ivar">@client</span> = <span class="ruby-identifier">new_client</span>
+44:     <span class="ruby-identifier">check_keyspace</span>
+45:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000042"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000042'>
+
+
+reconnect!
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000042-show-link"><a onclick="toggle('M000042-source'); toggleText('M000042-link'); return false;" href="#" id="M000042-link">Show source...</a></p><div class="source" id="M000042-source"><pre>     <span class="ruby-comment cmt"># File lib/cassandra/0.7/cassandra.rb, line 252</span>
+252:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">reconnect!</span>
+253:     <span class="ruby-ivar">@servers</span> = <span class="ruby-identifier">all_nodes</span>
+254:     <span class="ruby-ivar">@client</span> = <span class="ruby-identifier">new_client</span>
+255:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000008"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000008'>
+
+
+schema
+
+(load=true)
+
+</a>
+</h3>
+
+<p class="source_link" id="M000008-show-link"><a onclick="toggle('M000008-source'); toggleText('M000008-link'); return false;" href="#" id="M000008-link">Show source...</a></p><div class="source" id="M000008-source"><pre>    <span class="ruby-comment cmt"># File lib/cassandra/0.6/cassandra.rb, line 28</span>
+28:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">schema</span>(<span class="ruby-identifier">load</span>=<span class="ruby-keyword kw">true</span>)
+29:     <span class="ruby-keyword kw">if</span> <span class="ruby-operator">!</span><span class="ruby-identifier">load</span> <span class="ruby-operator">&amp;&amp;</span> <span class="ruby-operator">!</span><span class="ruby-ivar">@schema</span>
+30:       []
+31:     <span class="ruby-keyword kw">else</span>
+32:       <span class="ruby-ivar">@schema</span> <span class="ruby-operator">||=</span> <span class="ruby-identifier">client</span>.<span class="ruby-identifier">describe_keyspace</span>(<span class="ruby-ivar">@keyspace</span>)
+33:     <span class="ruby-keyword kw">end</span>
+34:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+
+
+
+
+</div><div class="clear" id="footer">Generated on Jan 21, 2008 / Allison 2 &copy; 2007 <a href="http://cloudbur.st">Cloudburst, LLC</a></div></div></body></html>

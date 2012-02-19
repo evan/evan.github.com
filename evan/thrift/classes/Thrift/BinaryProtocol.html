@@ -1,0 +1,1185 @@
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en"><head><meta content="text/html; charset=utf-8" http-equiv="Content-Type"/><title>Class: Thrift::BinaryProtocol</title><link type="text/css" rel="stylesheet" media="screen" href="../.././rdoc-style.css"/><script type="text/javascript">
+// Allison template
+// Copyright 2007, 2008 Cloudburst, LLC. Licensed under the AFL 3. See the included LICENSE file.
+
+var href_base = '../.././rdoc-style.css'.replace(/(.*\/).*/, '$1'); // inline js is good for something  
+
+function $(id) {
+    if (document.getElementById)
+      elem = document.getElementById(id);
+    else if ( document.all )
+      elem = eval("document.all." + id);
+    else
+      return false;
+    return elem;
+}
+
+  function toggle(id) {
+    elem = $(id);
+    elemStyle = elem.style;   
+    if (elemStyle.display == "block") {
+      elemStyle.display = "none"
+    } else {
+      elemStyle.display = "block"
+    }
+    return true;
+  }
+
+  function toggleText(id) {
+    elem = $(id)
+    if (m = elem.innerHTML.match(/(Hide)(.*)/)) {
+      elem.innerHTML = "Show" + m[2];
+    } else if (m = elem.innerHTML.match(/(Show)(.*)/)) {
+      elem.innerHTML = "Hide" + m[2];
+    }
+    return true;
+  }
+
+function span(s, klass) {
+  return '<span class="' + klass + '">' + s + '</span>';
+}
+  
+function highlightSymbols() {
+  pres = document.getElementsByTagName('pre');
+  for(var i = 0; i < pres.length; i++) {
+    pre = pres[i];
+    spans = pre.getElementsByTagName('span');
+    for(var k = 0; k < spans.length; k++) {
+      span = spans[k];
+      if (span.className.match(/ruby-identifier/)) {
+        if (span.innerHTML.match(/^:/)) {
+          span.className += " ruby-symbol";
+        }
+      }
+    }
+  }
+}
+
+ function hasClass(obj) {
+     var result = false;
+     if (obj.getAttributeNode("class") != null) {
+         result = obj.getAttributeNode("class").value;
+     }
+     return result;
+  }   
+
+ function stripe() {
+    var even = true;
+    var color = "#e4ebed";
+    var tables = document.getElementsByTagName('table');
+    if (tables.length == 0) { return; }
+    for (var h = 0; h < tables.length; h++) {
+        var trs = tables[h].getElementsByTagName("tr");
+        for (var i = 0; i < trs.length; i++) {
+          var tds = trs[i].getElementsByTagName("td");
+            for (var j = 0; j < tds.length; j++) {       
+              if (hasClass(tds[j]) != "first") {                
+              var mytd = tds[j];
+              if (even) {
+                mytd.style.backgroundColor = color;
+              }         
+            }
+          }
+          even =  ! even;
+      }
+    }
+  }
+  
+function ajaxGet(url) {
+  url = (href_base + url).replace('/./', '/')
+  var req = false;
+
+  if (window.ActiveXObject) {
+    try {
+      // stupid hack because IE7 disables local Ajax with the native xmlhttprequest object
+      // for security purposes. Yet ActiveX still works. Thanks, Microsoft. I hate you. Die.
+      req = new ActiveXObject("MSXML2.XMLHTTP.3.0");
+    } catch (e) {
+      try {
+        /* IE 6 and maybe 5, don't know, don't care */
+        req = new ActiveXObject("Msxml2.XMLHTTP");
+      } catch (e) {
+        try {
+          req = new ActiveXObject("Microsoft.XMLHTTP");
+        } catch (e) {
+          req = false;
+        }
+      }
+    }
+  }
+    
+  /* real browsers */
+  if (!req && window.XMLHttpRequest) {
+    try {
+      req = new XMLHttpRequest();
+    } catch (e) {
+      req = false;
+    }
+  } 
+  
+  if (req) {
+    req.open('GET', url, false);
+    req.send(null);
+    return req.responseText;
+  } else {
+    return "Ajax error";  
+  }
+}
+
+
+function addEvent(elm, evType, fn, useCapture) {
+	if (elm.addEventListener) {
+	  elm.addEventListener(evType, fn, useCapture);  
+  	return true;
+	} else if (elm.attachEvent) {
+  	var r = elm.attachEvent('on' + evType, fn);  
+	  return r;  
+	} else {
+  	elm['on' + evType] = fn;
+	}
+}
+
+function insertIndices() {
+  pages = ["class", "file", "method"]
+  for (x in pages) { 
+    $(pages[x]).innerHTML += ajaxGet('fr_' + pages[x] + '_index.html').replace(/(href=")/g, '$1' + href_base);
+  }
+  /* mouseoverify method links */
+  links = $('method').getElementsByTagName('a');
+  for (var x = 0; x < links.length; x++) {
+    if (m = links[x].innerHTML.match(/(.*)\s\((.*)\)/)) {
+      links[x].innerHTML = m[1] + '<br>';
+      links[x].title = m[2];
+    }
+  }
+  /* this is stupid */
+  $('class').style.display = "block";
+  $('file').style.display = "block";
+  
+  /* has to be here because IE7 does not guarantee the onLoad callback order */
+  abbreviateIndicesInner(["class", "file"], 25, "a");
+  /* same, linkTitle() depends on the class link list */
+  linkTitle();
+}
+
+function abbreviateIndices() {
+  var ids = ["defined_in", "child_of", "includes", "requires", "method", "methods"];
+  abbreviateIndicesInner(ids, 25, 'a');
+  abbreviateIndicesInner(ids, 25, 'span');
+}
+
+function abbreviateIndicesInner(indices, amount, tag) {
+  for (var x = 0; x < indices.length; x++) { 
+    var the_index = $(indices[x]);
+    if (the_index) {
+      links = the_index.getElementsByTagName(tag);
+      for (var y = 0; y < links.length; y++) {
+        var link = links[y];
+        if (link.getElementsByTagName('span').length == 0 && link.getElementsByTagName('a').length == 0) {
+          // avoid nesting
+          link.innerHTML = link.innerHTML.replace(/<br>|\n/gi, '');
+          link.title = link.innerHTML;
+          link.innerHTML = abbreviate(link.innerHTML, amount) + '<br>';
+        }
+      }
+    }
+  }
+}
+
+function linkTitle() {
+  
+  /* grab the correct title element from the index */
+  var index_page = ajaxGet('index.html');
+  title_text = index_page.match(/<title>(.*)<\/title>/m)[1];
+  document.title = title_text + " - " + document.title;
+  var p = $('header').getElementsByTagName('p')[0]
+  if (p.innerHTML.match(/^\s*$/)) {
+    p.innerHTML = title_text;
+  } else {
+    p.innerHTML = title_text + ": " + p.innerHTML;
+  }
+  
+  /* set the link properly */
+  title_link = index_page.match(/<a\s+href="(.*?)"/)[1];
+  var element = $('title');
+  var item_type = "";
+  var item_name = "";
+  if (m = element.innerHTML.match(/(Class:|Module:|File:)\s*(.*)/)) {
+    item_type = m[1];
+    item_name = m[2];
+  } else {
+    item_name = element.innerHTML;
+  }
+  element.innerHTML = '<a href="' + href_base + title_link + '">' + item_type + " " + abbreviate(item_name, 45) + '</a>';
+  element.getElementsByTagName('a')[0].title = item_name
+  
+  /* breadcrumb navigation */
+  items = item_name.split("::");
+  items_new = item_name.split("::");
+  file_links = $('class').getElementsByTagName('a');
+  for (var x = 0; x < items.length - 1; x++ ){
+    var item = items[x];
+    link = ("/classes/" + items.slice(0,x).join("/") + "/" + item + ".html").replace('//', '/');
+    regex = new RegExp(RegExp.escape(link) + '$');
+    for (var y = 0; y < file_links.length; y++) {
+      if (file_links[y].href.match(regex)) {
+         items_new[x] = '<a href="' + href_base + link + '">' + item + '</a>';
+         break;
+      }
+    }  
+  }
+  $('item_name').innerHTML = item_type + ' ' + items_new.join(" :: ");
+}
+
+function abbreviate(s, size) {
+  while (s.length > size) {
+    var old_s = s;
+    s = s.replace(/\s|\n/mg, '');
+    s = s.replace(/([A-Z])[a-z]+/m, '$1');
+    if (!s || old_s == s) {
+      return "..." + s.substring(s.length - size, s.length);
+    }
+  }
+  return s;
+}
+
+function disableSubmit(event) {
+  var keyCode = event.keyCode ? event.keyCode : event.which ? event.which : event.charCode;
+  if (keyCode == 13) {
+    return false;
+  } else {
+    return true;
+  }
+}
+  
+function filterList(id, s, event) {
+  
+  /* some weak escaping */
+  s = s.replace(/[^\w\d\.\_\-\/\:\=\[\]\?\!]/g, '');
+  s = RegExp.escape(s);
+  
+  var show_all = false;
+  if (s.match(/^\s*$/)) {
+    show_all = true;
+  }
+  
+  links = $(id).getElementsByTagName('a')
+  regex = new RegExp(s, 'i');
+  
+  for (var x = 0; x < links.length; x++) {
+    var link = links[x];
+    if (show_all) {
+      link.style.display = 'inline';
+    } else {
+       if (link.innerHTML.match(regex)) {        
+         link.style.display = 'inline';
+       } else {
+         link.style.display = 'none';
+       }
+    }
+  }
+  return true;
+}
+
+RegExp.escape = function(text) {
+  if (!arguments.callee.sRE) {
+    var specials = ['/', '.', '*', '+', '?', '|', '(', ')', '[', ']', '{', '}', '\\'];
+    arguments.callee.sRE = new RegExp(
+      '(\\' + specials.join('|\\') + ')', 'g'
+    );
+  }
+  return text.replace(arguments.callee.sRE, '\\$1');
+}
+
+function hacks() {
+  // show the spacer if necessary, 
+  divs = document.getElementsByTagName('div');
+  for(var x = 0; x < divs.length; x++) {
+    if (divs[x].className && divs[x].className.match(/top/)) {
+      document.getElementById('spacer').style.display = 'block';
+    }
+  }
+  // remove extra colons from tables
+  tds = document.getElementsByTagName('td');
+  for(var x = 0; x < tds.length; x++) {
+    str = tds[x].innerHTML
+    if (str.charAt(str.length - 1) == ":") {
+      tds[x].innerHTML = str.slice(0, str.length - 1)
+    }
+  }
+}
+
+addEvent(window, 'load', insertIndices, false);
+addEvent(window, 'load', abbreviateIndices, false);
+addEvent(window, 'load', stripe, false);
+addEvent(window, 'load', highlightSymbols, false);
+addEvent(window, 'load', hacks, false);
+</script></head><body><div id="container"><div class="curve" id="preheader_curve_0"></div><div class="curve" id="preheader_curve_1"></div><div class="curve" id="preheader_curve_2"></div><div class="curve" id="preheader_curve_3"></div><div class="curve" id="preheader_curve_4"></div><div class="curve" id="preheader_curve_5"></div><div id="header"><p>
+</p><span><h1 id="title">
+Class: Thrift::BinaryProtocol
+</h1></span></div><div class="clear"></div><div id="left">
+<div class="navigation darker top" id="child_of"><h3>Child of</h3><span>
+
+<a href='BaseProtocol.html'>
+BaseProtocol
+</a>
+</span></div>
+
+<div class="navigation darker top" id="defined_in"><h3>Defined in</h3>
+
+<a href="../../files/lib/thrift/protocol/binary_protocol_rb.html">lib/thrift/protocol/binary_protocol.rb</a>
+
+</div>
+
+
+
+<div class="navigation top" id="methods"><h3>Methods</h3>
+
+
+<a href='#M000135'>
+new<br/>
+</a>
+
+
+
+
+<a href='#M000156'>
+read_bool<br/>
+</a>
+
+
+
+
+<a href='#M000157'>
+read_byte<br/>
+</a>
+
+
+
+
+<a href='#M000161'>
+read_double<br/>
+</a>
+
+
+
+
+<a href='#M000152'>
+read_field_begin<br/>
+</a>
+
+
+
+
+<a href='#M000158'>
+read_i16<br/>
+</a>
+
+
+
+
+<a href='#M000159'>
+read_i32<br/>
+</a>
+
+
+
+
+<a href='#M000160'>
+read_i64<br/>
+</a>
+
+
+
+
+<a href='#M000154'>
+read_list_begin<br/>
+</a>
+
+
+
+
+<a href='#M000153'>
+read_map_begin<br/>
+</a>
+
+
+
+
+<a href='#M000150'>
+read_message_begin<br/>
+</a>
+
+
+
+
+<a href='#M000155'>
+read_set_begin<br/>
+</a>
+
+
+
+
+<a href='#M000162'>
+read_string<br/>
+</a>
+
+
+
+
+<a href='#M000151'>
+read_struct_begin<br/>
+</a>
+
+
+
+
+<a href='#M000143'>
+write_bool<br/>
+</a>
+
+
+
+
+<a href='#M000144'>
+write_byte<br/>
+</a>
+
+
+
+
+<a href='#M000148'>
+write_double<br/>
+</a>
+
+
+
+
+<a href='#M000138'>
+write_field_begin<br/>
+</a>
+
+
+
+
+<a href='#M000139'>
+write_field_stop<br/>
+</a>
+
+
+
+
+<a href='#M000145'>
+write_i16<br/>
+</a>
+
+
+
+
+<a href='#M000146'>
+write_i32<br/>
+</a>
+
+
+
+
+<a href='#M000147'>
+write_i64<br/>
+</a>
+
+
+
+
+<a href='#M000141'>
+write_list_begin<br/>
+</a>
+
+
+
+
+<a href='#M000140'>
+write_map_begin<br/>
+</a>
+
+
+
+
+<a href='#M000136'>
+write_message_begin<br/>
+</a>
+
+
+
+
+<a href='#M000142'>
+write_set_begin<br/>
+</a>
+
+
+
+
+<a href='#M000149'>
+write_string<br/>
+</a>
+
+
+
+
+<a href='#M000137'>
+write_struct_begin<br/>
+</a>
+
+
+</div>
+<div id="spacer"></div><div class="navigation darker index" id="class_wrapper"><div class="list_header"><h3>All classes</h3></div><div class="list_header_link"><a onclick="toggle('class'); toggleText('class_link'); return false;" id="class_link" href="#">Hide...</a></div><div class="clear"></div><div id="class"><form><label for="filter_class">Filter:&nbsp;&nbsp;</label><input type="text" onKeyUp="return filterList('class', this.value, event);" onKeyPress="return disableSubmit(event);" id="filter_class"></input></form></div></div><div class="navigation darker index" id="file_wrapper"><div class="list_header"><h3>All files</h3></div><div class="list_header_link"><a onclick="toggle('file'); toggleText('file_link'); return false;" id="file_link" href="#">Hide...</a></div><div class="clear"></div><div id="file"><form><label for="filter_file">Filter:&nbsp;&nbsp;</label><input type="text" onKeyUp="return filterList('file', this.value, event);" onKeyPress="return disableSubmit(event);" id="filter_file"></input></form></div></div><div class="navigation darker index" id="method_wrapper"><div class="list_header"><h3>All methods</h3></div><div class="list_header_link"><a onclick="toggle('method'); toggleText('method_link'); return false;" id="method_link" href="#">Show...</a></div><div class="clear"></div><div id="method"><form><label for="filter_method">Filter:&nbsp;&nbsp;</label><input type="text" onKeyUp="return filterList('method', this.value, event);" onKeyPress="return disableSubmit(event);" id="filter_method"></input></form></div></div></div><div id="content">
+<h1 id="item_name">Class: Thrift::BinaryProtocol</h1>
+
+
+
+
+
+<p></p>
+
+
+<h1>Constants</h1><p><table><tr><th>Name</th><th>Value</th></tr>
+<tr>
+<td class="highlight">VERSION_MASK</td>
+
+<td class="normal">0xffff0000</td>
+
+
+
+</tr>
+<tr>
+<td class="highlight">VERSION_1</td>
+
+<td class="normal">0x80010000</td>
+
+
+
+</tr>
+<tr>
+<td class="highlight">TYPE_MASK</td>
+
+<td class="normal">0x000000ff</td>
+
+
+
+</tr>
+</table></p>
+
+
+<h1>Attributes</h1><p><table><tr><th>Name</th><th>Read/write?</th></tr>
+<tr>
+<td class="highlight">strict_read</td>
+
+
+
+
+<td class="normal">R</td>
+</tr>
+<tr>
+<td class="highlight">strict_write</td>
+
+
+
+
+<td class="normal">R</td>
+</tr>
+</table></p>
+
+
+<h1>Public Class Methods</h1>
+
+
+<a class="small" name="M000135"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000135'>
+
+
+new
+
+(trans, strict_read=true, strict_write=true)
+
+</a>
+</h3>
+
+<p class="source_link" id="M000135-show-link"><a onclick="toggle('M000135-source'); toggleText('M000135-link'); return false;" id="M000135-link" href="#">Show source...</a></p><div class="source" id="M000135-source"><pre>    <span class="ruby-comment cmt"># File lib/thrift/protocol/binary_protocol.rb, line 28</span>
+28:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">initialize</span>(<span class="ruby-identifier">trans</span>, <span class="ruby-identifier">strict_read</span>=<span class="ruby-keyword kw">true</span>, <span class="ruby-identifier">strict_write</span>=<span class="ruby-keyword kw">true</span>)
+29:       <span class="ruby-keyword kw">super</span>(<span class="ruby-identifier">trans</span>)
+30:       <span class="ruby-ivar">@strict_read</span> = <span class="ruby-identifier">strict_read</span>
+31:       <span class="ruby-ivar">@strict_write</span> = <span class="ruby-identifier">strict_write</span>
+32:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+
+<h1>Public Instance Methods</h1>
+
+
+<a class="small" name="M000156"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000156'>
+
+
+read_bool
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000156-show-link"><a onclick="toggle('M000156-source'); toggleText('M000156-link'); return false;" id="M000156-link" href="#">Show source...</a></p><div class="source" id="M000156-source"><pre>     <span class="ruby-comment cmt"># File lib/thrift/protocol/binary_protocol.rb, line 162</span>
+162:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">read_bool</span>
+163:       <span class="ruby-identifier">byte</span> = <span class="ruby-identifier">read_byte</span>
+164:       <span class="ruby-identifier">byte</span> <span class="ruby-operator">!=</span> <span class="ruby-value">0</span>
+165:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000157"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000157'>
+
+
+read_byte
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000157-show-link"><a onclick="toggle('M000157-source'); toggleText('M000157-link'); return false;" id="M000157-link" href="#">Show source...</a></p><div class="source" id="M000157-source"><pre>     <span class="ruby-comment cmt"># File lib/thrift/protocol/binary_protocol.rb, line 167</span>
+167:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">read_byte</span>
+168:       <span class="ruby-identifier">dat</span> = <span class="ruby-identifier">trans</span>.<span class="ruby-identifier">read_all</span>(<span class="ruby-value">1</span>)
+169:       <span class="ruby-identifier">val</span> = <span class="ruby-identifier">dat</span>[<span class="ruby-value">0</span>].<span class="ruby-identifier">ord</span>
+170:       <span class="ruby-keyword kw">if</span> (<span class="ruby-identifier">val</span> <span class="ruby-operator">&gt;</span> <span class="ruby-value">0x7f</span>)
+171:         <span class="ruby-identifier">val</span> = <span class="ruby-value">0</span> <span class="ruby-operator">-</span> ((<span class="ruby-identifier">val</span> <span class="ruby-operator">-</span> <span class="ruby-value">1</span>) <span class="ruby-operator">^</span> <span class="ruby-value">0xff</span>)
+172:       <span class="ruby-keyword kw">end</span>
+173:       <span class="ruby-identifier">val</span>
+174:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000161"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000161'>
+
+
+read_double
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000161-show-link"><a onclick="toggle('M000161-source'); toggleText('M000161-link'); return false;" id="M000161-link" href="#">Show source...</a></p><div class="source" id="M000161-source"><pre>     <span class="ruby-comment cmt"># File lib/thrift/protocol/binary_protocol.rb, line 206</span>
+206:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">read_double</span>
+207:       <span class="ruby-identifier">dat</span> = <span class="ruby-identifier">trans</span>.<span class="ruby-identifier">read_all</span>(<span class="ruby-value">8</span>)
+208:       <span class="ruby-identifier">val</span> = <span class="ruby-identifier">dat</span>.<span class="ruby-identifier">unpack</span>(<span class="ruby-value str">'G'</span>).<span class="ruby-identifier">first</span>
+209:       <span class="ruby-identifier">val</span>
+210:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000152"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000152'>
+
+
+read_field_begin
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000152-show-link"><a onclick="toggle('M000152-source'); toggleText('M000152-link'); return false;" id="M000152-link" href="#">Show source...</a></p><div class="source" id="M000152-source"><pre>     <span class="ruby-comment cmt"># File lib/thrift/protocol/binary_protocol.rb, line 133</span>
+133:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">read_field_begin</span>
+134:       <span class="ruby-identifier">type</span> = <span class="ruby-identifier">read_byte</span>
+135:       <span class="ruby-keyword kw">if</span> (<span class="ruby-identifier">type</span> <span class="ruby-operator">==</span> <span class="ruby-constant">Types</span><span class="ruby-operator">::</span><span class="ruby-constant">STOP</span>)
+136:         [<span class="ruby-keyword kw">nil</span>, <span class="ruby-identifier">type</span>, <span class="ruby-value">0</span>]
+137:       <span class="ruby-keyword kw">else</span>
+138:         <span class="ruby-identifier">id</span> = <span class="ruby-identifier">read_i16</span>
+139:         [<span class="ruby-keyword kw">nil</span>, <span class="ruby-identifier">type</span>, <span class="ruby-identifier">id</span>]
+140:       <span class="ruby-keyword kw">end</span>
+141:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000158"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000158'>
+
+
+read_i16
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000158-show-link"><a onclick="toggle('M000158-source'); toggleText('M000158-link'); return false;" id="M000158-link" href="#">Show source...</a></p><div class="source" id="M000158-source"><pre>     <span class="ruby-comment cmt"># File lib/thrift/protocol/binary_protocol.rb, line 176</span>
+176:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">read_i16</span>
+177:       <span class="ruby-identifier">dat</span> = <span class="ruby-identifier">trans</span>.<span class="ruby-identifier">read_all</span>(<span class="ruby-value">2</span>)
+178:       <span class="ruby-identifier">val</span>, = <span class="ruby-identifier">dat</span>.<span class="ruby-identifier">unpack</span>(<span class="ruby-value str">'n'</span>)
+179:       <span class="ruby-keyword kw">if</span> (<span class="ruby-identifier">val</span> <span class="ruby-operator">&gt;</span> <span class="ruby-value">0x7fff</span>)
+180:         <span class="ruby-identifier">val</span> = <span class="ruby-value">0</span> <span class="ruby-operator">-</span> ((<span class="ruby-identifier">val</span> <span class="ruby-operator">-</span> <span class="ruby-value">1</span>) <span class="ruby-operator">^</span> <span class="ruby-value">0xffff</span>)
+181:       <span class="ruby-keyword kw">end</span>
+182:       <span class="ruby-identifier">val</span>
+183:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000159"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000159'>
+
+
+read_i32
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000159-show-link"><a onclick="toggle('M000159-source'); toggleText('M000159-link'); return false;" id="M000159-link" href="#">Show source...</a></p><div class="source" id="M000159-source"><pre>     <span class="ruby-comment cmt"># File lib/thrift/protocol/binary_protocol.rb, line 185</span>
+185:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">read_i32</span>
+186:       <span class="ruby-identifier">dat</span> = <span class="ruby-identifier">trans</span>.<span class="ruby-identifier">read_all</span>(<span class="ruby-value">4</span>)
+187:       <span class="ruby-identifier">val</span>, = <span class="ruby-identifier">dat</span>.<span class="ruby-identifier">unpack</span>(<span class="ruby-value str">'N'</span>)
+188:       <span class="ruby-keyword kw">if</span> (<span class="ruby-identifier">val</span> <span class="ruby-operator">&gt;</span> <span class="ruby-value">0x7fffffff</span>)
+189:         <span class="ruby-identifier">val</span> = <span class="ruby-value">0</span> <span class="ruby-operator">-</span> ((<span class="ruby-identifier">val</span> <span class="ruby-operator">-</span> <span class="ruby-value">1</span>) <span class="ruby-operator">^</span> <span class="ruby-value">0xffffffff</span>)
+190:       <span class="ruby-keyword kw">end</span>
+191:       <span class="ruby-identifier">val</span>
+192:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000160"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000160'>
+
+
+read_i64
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000160-show-link"><a onclick="toggle('M000160-source'); toggleText('M000160-link'); return false;" id="M000160-link" href="#">Show source...</a></p><div class="source" id="M000160-source"><pre>     <span class="ruby-comment cmt"># File lib/thrift/protocol/binary_protocol.rb, line 194</span>
+194:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">read_i64</span>
+195:       <span class="ruby-identifier">dat</span> = <span class="ruby-identifier">trans</span>.<span class="ruby-identifier">read_all</span>(<span class="ruby-value">8</span>)
+196:       <span class="ruby-identifier">hi</span>, <span class="ruby-identifier">lo</span> = <span class="ruby-identifier">dat</span>.<span class="ruby-identifier">unpack</span>(<span class="ruby-value str">'N2'</span>)
+197:       <span class="ruby-keyword kw">if</span> (<span class="ruby-identifier">hi</span> <span class="ruby-operator">&gt;</span> <span class="ruby-value">0x7fffffff</span>)
+198:         <span class="ruby-identifier">hi</span> <span class="ruby-operator">^=</span> <span class="ruby-value">0xffffffff</span>
+199:         <span class="ruby-identifier">lo</span> <span class="ruby-operator">^=</span> <span class="ruby-value">0xffffffff</span>
+200:         <span class="ruby-value">0</span> <span class="ruby-operator">-</span> (<span class="ruby-identifier">hi</span> <span class="ruby-operator">&lt;&lt;</span> <span class="ruby-value">32</span>) <span class="ruby-operator">-</span> <span class="ruby-identifier">lo</span> <span class="ruby-operator">-</span> <span class="ruby-value">1</span>
+201:       <span class="ruby-keyword kw">else</span>
+202:         (<span class="ruby-identifier">hi</span> <span class="ruby-operator">&lt;&lt;</span> <span class="ruby-value">32</span>) <span class="ruby-operator">+</span> <span class="ruby-identifier">lo</span>
+203:       <span class="ruby-keyword kw">end</span>
+204:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000154"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000154'>
+
+
+read_list_begin
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000154-show-link"><a onclick="toggle('M000154-source'); toggleText('M000154-link'); return false;" id="M000154-link" href="#">Show source...</a></p><div class="source" id="M000154-source"><pre>     <span class="ruby-comment cmt"># File lib/thrift/protocol/binary_protocol.rb, line 150</span>
+150:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">read_list_begin</span>
+151:       <span class="ruby-identifier">etype</span> = <span class="ruby-identifier">read_byte</span>
+152:       <span class="ruby-identifier">size</span> = <span class="ruby-identifier">read_i32</span>
+153:       [<span class="ruby-identifier">etype</span>, <span class="ruby-identifier">size</span>]
+154:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000153"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000153'>
+
+
+read_map_begin
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000153-show-link"><a onclick="toggle('M000153-source'); toggleText('M000153-link'); return false;" id="M000153-link" href="#">Show source...</a></p><div class="source" id="M000153-source"><pre>     <span class="ruby-comment cmt"># File lib/thrift/protocol/binary_protocol.rb, line 143</span>
+143:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">read_map_begin</span>
+144:       <span class="ruby-identifier">ktype</span> = <span class="ruby-identifier">read_byte</span>
+145:       <span class="ruby-identifier">vtype</span> = <span class="ruby-identifier">read_byte</span>
+146:       <span class="ruby-identifier">size</span> = <span class="ruby-identifier">read_i32</span>
+147:       [<span class="ruby-identifier">ktype</span>, <span class="ruby-identifier">vtype</span>, <span class="ruby-identifier">size</span>]
+148:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000150"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000150'>
+
+
+read_message_begin
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000150-show-link"><a onclick="toggle('M000150-source'); toggleText('M000150-link'); return false;" id="M000150-link" href="#">Show source...</a></p><div class="source" id="M000150-source"><pre>     <span class="ruby-comment cmt"># File lib/thrift/protocol/binary_protocol.rb, line 110</span>
+110:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">read_message_begin</span>
+111:       <span class="ruby-identifier">version</span> = <span class="ruby-identifier">read_i32</span>
+112:       <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">version</span> <span class="ruby-operator">&lt;</span> <span class="ruby-value">0</span>
+113:         <span class="ruby-keyword kw">if</span> (<span class="ruby-identifier">version</span> <span class="ruby-operator">&amp;</span> <span class="ruby-constant">VERSION_MASK</span> <span class="ruby-operator">!=</span> <span class="ruby-constant">VERSION_1</span>)
+114:           <span class="ruby-identifier">raise</span> <span class="ruby-constant">ProtocolException</span>.<span class="ruby-identifier">new</span>(<span class="ruby-constant">ProtocolException</span><span class="ruby-operator">::</span><span class="ruby-constant">BAD_VERSION</span>, <span class="ruby-value str">'Missing version identifier'</span>)
+115:         <span class="ruby-keyword kw">end</span>
+116:         <span class="ruby-identifier">type</span> = <span class="ruby-identifier">version</span> <span class="ruby-operator">&amp;</span> <span class="ruby-constant">TYPE_MASK</span>
+117:         <span class="ruby-identifier">name</span> = <span class="ruby-identifier">read_string</span>
+118:         <span class="ruby-identifier">seqid</span> = <span class="ruby-identifier">read_i32</span>
+119:         [<span class="ruby-identifier">name</span>, <span class="ruby-identifier">type</span>, <span class="ruby-identifier">seqid</span>]
+120:       <span class="ruby-keyword kw">else</span>
+121:         <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">strict_read</span>
+122:           <span class="ruby-identifier">raise</span> <span class="ruby-constant">ProtocolException</span>.<span class="ruby-identifier">new</span>(<span class="ruby-constant">ProtocolException</span><span class="ruby-operator">::</span><span class="ruby-constant">BAD_VERSION</span>, <span class="ruby-value str">'No version identifier, old protocol client?'</span>)
+123:         <span class="ruby-keyword kw">end</span>
+124:         <span class="ruby-identifier">name</span> = <span class="ruby-identifier">trans</span>.<span class="ruby-identifier">read_all</span>(<span class="ruby-identifier">version</span>)
+125:         <span class="ruby-identifier">type</span> = <span class="ruby-identifier">read_byte</span>
+126:         <span class="ruby-identifier">seqid</span> = <span class="ruby-identifier">read_i32</span>
+127:         [<span class="ruby-identifier">name</span>, <span class="ruby-identifier">type</span>, <span class="ruby-identifier">seqid</span>]
+128:       <span class="ruby-keyword kw">end</span>
+129:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000155"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000155'>
+
+
+read_set_begin
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000155-show-link"><a onclick="toggle('M000155-source'); toggleText('M000155-link'); return false;" id="M000155-link" href="#">Show source...</a></p><div class="source" id="M000155-source"><pre>     <span class="ruby-comment cmt"># File lib/thrift/protocol/binary_protocol.rb, line 156</span>
+156:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">read_set_begin</span>
+157:       <span class="ruby-identifier">etype</span> = <span class="ruby-identifier">read_byte</span>
+158:       <span class="ruby-identifier">size</span> = <span class="ruby-identifier">read_i32</span>
+159:       [<span class="ruby-identifier">etype</span>, <span class="ruby-identifier">size</span>]
+160:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000162"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000162'>
+
+
+read_string
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000162-show-link"><a onclick="toggle('M000162-source'); toggleText('M000162-link'); return false;" id="M000162-link" href="#">Show source...</a></p><div class="source" id="M000162-source"><pre>     <span class="ruby-comment cmt"># File lib/thrift/protocol/binary_protocol.rb, line 212</span>
+212:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">read_string</span>
+213:       <span class="ruby-identifier">sz</span> = <span class="ruby-identifier">read_i32</span>
+214:       <span class="ruby-identifier">dat</span> = <span class="ruby-identifier">trans</span>.<span class="ruby-identifier">read_all</span>(<span class="ruby-identifier">sz</span>)
+215:       <span class="ruby-identifier">dat</span>
+216:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000151"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000151'>
+
+
+read_struct_begin
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000151-show-link"><a onclick="toggle('M000151-source'); toggleText('M000151-link'); return false;" id="M000151-link" href="#">Show source...</a></p><div class="source" id="M000151-source"><pre>     <span class="ruby-comment cmt"># File lib/thrift/protocol/binary_protocol.rb, line 131</span>
+131:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">read_struct_begin</span>; <span class="ruby-keyword kw">nil</span>; <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000143"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000143'>
+
+
+write_bool
+
+(bool)
+
+</a>
+</h3>
+
+<p class="source_link" id="M000143-show-link"><a onclick="toggle('M000143-source'); toggleText('M000143-link'); return false;" id="M000143-link" href="#">Show source...</a></p><div class="source" id="M000143-source"><pre>    <span class="ruby-comment cmt"># File lib/thrift/protocol/binary_protocol.rb, line 76</span>
+76:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">write_bool</span>(<span class="ruby-identifier">bool</span>)
+77:       <span class="ruby-identifier">write_byte</span>(<span class="ruby-identifier">bool</span> <span class="ruby-value">? </span><span class="ruby-value">1</span> <span class="ruby-operator">:</span> <span class="ruby-value">0</span>)
+78:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000144"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000144'>
+
+
+write_byte
+
+(byte)
+
+</a>
+</h3>
+
+<p class="source_link" id="M000144-show-link"><a onclick="toggle('M000144-source'); toggleText('M000144-link'); return false;" id="M000144-link" href="#">Show source...</a></p><div class="source" id="M000144-source"><pre>    <span class="ruby-comment cmt"># File lib/thrift/protocol/binary_protocol.rb, line 80</span>
+80:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">write_byte</span>(<span class="ruby-identifier">byte</span>)
+81:       <span class="ruby-identifier">raise</span> <span class="ruby-constant">RangeError</span> <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">byte</span> <span class="ruby-operator">&lt;</span> <span class="ruby-value">-2</span><span class="ruby-operator">**</span><span class="ruby-value">31</span> <span class="ruby-operator">||</span> <span class="ruby-identifier">byte</span> <span class="ruby-operator">&gt;=</span> <span class="ruby-value">2</span><span class="ruby-operator">**</span><span class="ruby-value">32</span>
+82:       <span class="ruby-identifier">trans</span>.<span class="ruby-identifier">write</span>([<span class="ruby-identifier">byte</span>].<span class="ruby-identifier">pack</span>(<span class="ruby-value str">'c'</span>))
+83:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000148"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000148'>
+
+
+write_double
+
+(dub)
+
+</a>
+</h3>
+
+<p class="source_link" id="M000148-show-link"><a onclick="toggle('M000148-source'); toggleText('M000148-link'); return false;" id="M000148-link" href="#">Show source...</a></p><div class="source" id="M000148-source"><pre>     <span class="ruby-comment cmt"># File lib/thrift/protocol/binary_protocol.rb, line 101</span>
+101:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">write_double</span>(<span class="ruby-identifier">dub</span>)
+102:       <span class="ruby-identifier">trans</span>.<span class="ruby-identifier">write</span>([<span class="ruby-identifier">dub</span>].<span class="ruby-identifier">pack</span>(<span class="ruby-value str">'G'</span>))
+103:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000138"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000138'>
+
+
+write_field_begin
+
+(name, type, id)
+
+</a>
+</h3>
+
+<p class="source_link" id="M000138-show-link"><a onclick="toggle('M000138-source'); toggleText('M000138-link'); return false;" id="M000138-link" href="#">Show source...</a></p><div class="source" id="M000138-source"><pre>    <span class="ruby-comment cmt"># File lib/thrift/protocol/binary_protocol.rb, line 51</span>
+51:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">write_field_begin</span>(<span class="ruby-identifier">name</span>, <span class="ruby-identifier">type</span>, <span class="ruby-identifier">id</span>)
+52:       <span class="ruby-identifier">write_byte</span>(<span class="ruby-identifier">type</span>)
+53:       <span class="ruby-identifier">write_i16</span>(<span class="ruby-identifier">id</span>)
+54:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000139"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000139'>
+
+
+write_field_stop
+
+()
+
+</a>
+</h3>
+
+<p class="source_link" id="M000139-show-link"><a onclick="toggle('M000139-source'); toggleText('M000139-link'); return false;" id="M000139-link" href="#">Show source...</a></p><div class="source" id="M000139-source"><pre>    <span class="ruby-comment cmt"># File lib/thrift/protocol/binary_protocol.rb, line 56</span>
+56:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">write_field_stop</span>
+57:       <span class="ruby-identifier">write_byte</span>(<span class="ruby-constant">Thrift</span><span class="ruby-operator">::</span><span class="ruby-constant">Types</span><span class="ruby-operator">::</span><span class="ruby-constant">STOP</span>)
+58:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000145"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000145'>
+
+
+write_i16
+
+(i16)
+
+</a>
+</h3>
+
+<p class="source_link" id="M000145-show-link"><a onclick="toggle('M000145-source'); toggleText('M000145-link'); return false;" id="M000145-link" href="#">Show source...</a></p><div class="source" id="M000145-source"><pre>    <span class="ruby-comment cmt"># File lib/thrift/protocol/binary_protocol.rb, line 85</span>
+85:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">write_i16</span>(<span class="ruby-identifier">i16</span>)
+86:       <span class="ruby-identifier">trans</span>.<span class="ruby-identifier">write</span>([<span class="ruby-identifier">i16</span>].<span class="ruby-identifier">pack</span>(<span class="ruby-value str">'n'</span>))
+87:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000146"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000146'>
+
+
+write_i32
+
+(i32)
+
+</a>
+</h3>
+
+<p class="source_link" id="M000146-show-link"><a onclick="toggle('M000146-source'); toggleText('M000146-link'); return false;" id="M000146-link" href="#">Show source...</a></p><div class="source" id="M000146-source"><pre>    <span class="ruby-comment cmt"># File lib/thrift/protocol/binary_protocol.rb, line 89</span>
+89:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">write_i32</span>(<span class="ruby-identifier">i32</span>)
+90:       <span class="ruby-identifier">raise</span> <span class="ruby-constant">RangeError</span> <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">i32</span> <span class="ruby-operator">&lt;</span> <span class="ruby-value">-2</span><span class="ruby-operator">**</span><span class="ruby-value">31</span> <span class="ruby-operator">||</span> <span class="ruby-identifier">i32</span> <span class="ruby-operator">&gt;=</span> <span class="ruby-value">2</span><span class="ruby-operator">**</span><span class="ruby-value">31</span>
+91:       <span class="ruby-identifier">trans</span>.<span class="ruby-identifier">write</span>([<span class="ruby-identifier">i32</span>].<span class="ruby-identifier">pack</span>(<span class="ruby-value str">'N'</span>))
+92:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000147"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000147'>
+
+
+write_i64
+
+(i64)
+
+</a>
+</h3>
+
+<p class="source_link" id="M000147-show-link"><a onclick="toggle('M000147-source'); toggleText('M000147-link'); return false;" id="M000147-link" href="#">Show source...</a></p><div class="source" id="M000147-source"><pre>    <span class="ruby-comment cmt"># File lib/thrift/protocol/binary_protocol.rb, line 94</span>
+94:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">write_i64</span>(<span class="ruby-identifier">i64</span>)
+95:       <span class="ruby-identifier">raise</span> <span class="ruby-constant">RangeError</span> <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">i64</span> <span class="ruby-operator">&lt;</span> <span class="ruby-value">-2</span><span class="ruby-operator">**</span><span class="ruby-value">63</span> <span class="ruby-operator">||</span> <span class="ruby-identifier">i64</span> <span class="ruby-operator">&gt;=</span> <span class="ruby-value">2</span><span class="ruby-operator">**</span><span class="ruby-value">64</span>
+96:       <span class="ruby-identifier">hi</span> = <span class="ruby-identifier">i64</span> <span class="ruby-operator">&gt;&gt;</span> <span class="ruby-value">32</span>
+97:       <span class="ruby-identifier">lo</span> = <span class="ruby-identifier">i64</span> <span class="ruby-operator">&amp;</span> <span class="ruby-value">0xffffffff</span>
+98:       <span class="ruby-identifier">trans</span>.<span class="ruby-identifier">write</span>([<span class="ruby-identifier">hi</span>, <span class="ruby-identifier">lo</span>].<span class="ruby-identifier">pack</span>(<span class="ruby-value str">'N2'</span>))
+99:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000141"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000141'>
+
+
+write_list_begin
+
+(etype, size)
+
+</a>
+</h3>
+
+<p class="source_link" id="M000141-show-link"><a onclick="toggle('M000141-source'); toggleText('M000141-link'); return false;" id="M000141-link" href="#">Show source...</a></p><div class="source" id="M000141-source"><pre>    <span class="ruby-comment cmt"># File lib/thrift/protocol/binary_protocol.rb, line 66</span>
+66:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">write_list_begin</span>(<span class="ruby-identifier">etype</span>, <span class="ruby-identifier">size</span>)
+67:       <span class="ruby-identifier">write_byte</span>(<span class="ruby-identifier">etype</span>)
+68:       <span class="ruby-identifier">write_i32</span>(<span class="ruby-identifier">size</span>)
+69:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000140"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000140'>
+
+
+write_map_begin
+
+(ktype, vtype, size)
+
+</a>
+</h3>
+
+<p class="source_link" id="M000140-show-link"><a onclick="toggle('M000140-source'); toggleText('M000140-link'); return false;" id="M000140-link" href="#">Show source...</a></p><div class="source" id="M000140-source"><pre>    <span class="ruby-comment cmt"># File lib/thrift/protocol/binary_protocol.rb, line 60</span>
+60:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">write_map_begin</span>(<span class="ruby-identifier">ktype</span>, <span class="ruby-identifier">vtype</span>, <span class="ruby-identifier">size</span>)
+61:       <span class="ruby-identifier">write_byte</span>(<span class="ruby-identifier">ktype</span>)
+62:       <span class="ruby-identifier">write_byte</span>(<span class="ruby-identifier">vtype</span>)
+63:       <span class="ruby-identifier">write_i32</span>(<span class="ruby-identifier">size</span>)
+64:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000136"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000136'>
+
+
+write_message_begin
+
+(name, type, seqid)
+
+</a>
+</h3>
+
+<p class="source_link" id="M000136-show-link"><a onclick="toggle('M000136-source'); toggleText('M000136-link'); return false;" id="M000136-link" href="#">Show source...</a></p><div class="source" id="M000136-source"><pre>    <span class="ruby-comment cmt"># File lib/thrift/protocol/binary_protocol.rb, line 34</span>
+34:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">write_message_begin</span>(<span class="ruby-identifier">name</span>, <span class="ruby-identifier">type</span>, <span class="ruby-identifier">seqid</span>)
+35:       <span class="ruby-comment cmt"># this is necessary because we added (needed) bounds checking to </span>
+36:       <span class="ruby-comment cmt"># write_i32, and 0x80010000 is too big for that.</span>
+37:       <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">strict_write</span>
+38:         <span class="ruby-identifier">write_i16</span>(<span class="ruby-constant">VERSION_1</span> <span class="ruby-operator">&gt;&gt;</span> <span class="ruby-value">16</span>)
+39:         <span class="ruby-identifier">write_i16</span>(<span class="ruby-identifier">type</span>)
+40:         <span class="ruby-identifier">write_string</span>(<span class="ruby-identifier">name</span>)
+41:         <span class="ruby-identifier">write_i32</span>(<span class="ruby-identifier">seqid</span>)
+42:       <span class="ruby-keyword kw">else</span>
+43:         <span class="ruby-identifier">write_string</span>(<span class="ruby-identifier">name</span>)
+44:         <span class="ruby-identifier">write_byte</span>(<span class="ruby-identifier">type</span>)
+45:         <span class="ruby-identifier">write_i32</span>(<span class="ruby-identifier">seqid</span>)
+46:       <span class="ruby-keyword kw">end</span>
+47:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000142"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000142'>
+
+
+write_set_begin
+
+(etype, size)
+
+</a>
+</h3>
+
+<p class="source_link" id="M000142-show-link"><a onclick="toggle('M000142-source'); toggleText('M000142-link'); return false;" id="M000142-link" href="#">Show source...</a></p><div class="source" id="M000142-source"><pre>    <span class="ruby-comment cmt"># File lib/thrift/protocol/binary_protocol.rb, line 71</span>
+71:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">write_set_begin</span>(<span class="ruby-identifier">etype</span>, <span class="ruby-identifier">size</span>)
+72:       <span class="ruby-identifier">write_byte</span>(<span class="ruby-identifier">etype</span>)
+73:       <span class="ruby-identifier">write_i32</span>(<span class="ruby-identifier">size</span>)
+74:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000149"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000149'>
+
+
+write_string
+
+(str)
+
+</a>
+</h3>
+
+<p class="source_link" id="M000149-show-link"><a onclick="toggle('M000149-source'); toggleText('M000149-link'); return false;" id="M000149-link" href="#">Show source...</a></p><div class="source" id="M000149-source"><pre>     <span class="ruby-comment cmt"># File lib/thrift/protocol/binary_protocol.rb, line 105</span>
+105:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">write_string</span>(<span class="ruby-identifier">str</span>)
+106:       <span class="ruby-identifier">write_i32</span>(<span class="ruby-identifier">str</span>.<span class="ruby-identifier">length</span>)
+107:       <span class="ruby-identifier">trans</span>.<span class="ruby-identifier">write</span>(<span class="ruby-identifier">str</span>)
+108:     <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000137"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000137'>
+
+
+write_struct_begin
+
+(name)
+
+</a>
+</h3>
+
+<p class="source_link" id="M000137-show-link"><a onclick="toggle('M000137-source'); toggleText('M000137-link'); return false;" id="M000137-link" href="#">Show source...</a></p><div class="source" id="M000137-source"><pre>    <span class="ruby-comment cmt"># File lib/thrift/protocol/binary_protocol.rb, line 49</span>
+49:     <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">write_struct_begin</span>(<span class="ruby-identifier">name</span>); <span class="ruby-keyword kw">nil</span>; <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+
+
+
+
+</div><div class="clear" id="footer">Generated on Feb 5, 2010 / Allison 2 &copy; 2007 <a href="http://cloudbur.st">Cloudburst, LLC</a></div></div></body></html>

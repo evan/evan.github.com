@@ -1,0 +1,1762 @@
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head><meta content="text/html; charset=utf-8" http-equiv="Content-Type"/><title>Class: Memcached</title><link type="text/css" href=".././rdoc-style.css" media="screen" rel="stylesheet"/><script type="text/javascript">
+// Allison template
+// Copyright 2007, 2008 Cloudburst, LLC. Licensed under the AFL 3. See the included LICENSE file.
+
+var href_base = '.././rdoc-style.css'.replace(/(.*\/).*/, '$1'); // inline js is good for something  
+
+function $(id) {
+    if (document.getElementById)
+      elem = document.getElementById(id);
+    else if ( document.all )
+      elem = eval("document.all." + id);
+    else
+      return false;
+    return elem;
+}
+
+  function toggle(id) {
+    elem = $(id);
+    elemStyle = elem.style;   
+    if (elemStyle.display == "block") {
+      elemStyle.display = "none"
+    } else {
+      elemStyle.display = "block"
+    }
+    return true;
+  }
+
+  function toggleText(id) {
+    elem = $(id)
+    if (m = elem.innerHTML.match(/(Hide)(.*)/)) {
+      elem.innerHTML = "Show" + m[2];
+    } else if (m = elem.innerHTML.match(/(Show)(.*)/)) {
+      elem.innerHTML = "Hide" + m[2];
+    }
+    return true;
+  }
+
+function span(s, klass) {
+  return '<span class="' + klass + '">' + s + '</span>';
+}
+  
+function highlightSymbols() {
+  pres = document.getElementsByTagName('pre');
+  for(var i = 0; i < pres.length; i++) {
+    pre = pres[i];
+    spans = pre.getElementsByTagName('span');
+    for(var k = 0; k < spans.length; k++) {
+      span = spans[k];
+      if (span.className.match(/ruby-identifier/)) {
+        if (span.innerHTML.match(/^:/)) {
+          span.className += " ruby-symbol";
+        }
+      }
+    }
+  }
+}
+
+ function hasClass(obj) {
+     var result = false;
+     if (obj.getAttributeNode("class") != null) {
+         result = obj.getAttributeNode("class").value;
+     }
+     return result;
+  }   
+
+ function stripe() {
+    var even = true;
+    var color = "#e4ebed";
+    var tables = document.getElementsByTagName('table');
+    if (tables.length == 0) { return; }
+    for (var h = 0; h < tables.length; h++) {
+        var trs = tables[h].getElementsByTagName("tr");
+        for (var i = 0; i < trs.length; i++) {
+          var tds = trs[i].getElementsByTagName("td");
+            for (var j = 0; j < tds.length; j++) {       
+              if (hasClass(tds[j]) != "first") {                
+              var mytd = tds[j];
+              if (even) {
+                mytd.style.backgroundColor = color;
+              }         
+            }
+          }
+          even =  ! even;
+      }
+    }
+  }
+  
+function ajaxGet(url) {
+  url = (href_base + url).replace('/./', '/')
+  var req = false;
+
+  if (window.ActiveXObject) {
+    try {
+      // stupid hack because IE7 disables local Ajax with the native xmlhttprequest object
+      // for security purposes. Yet ActiveX still works. Thanks, Microsoft. I hate you. Die.
+      req = new ActiveXObject("MSXML2.XMLHTTP.3.0");
+    } catch (e) {
+      try {
+        /* IE 6 and maybe 5, don't know, don't care */
+        req = new ActiveXObject("Msxml2.XMLHTTP");
+      } catch (e) {
+        try {
+          req = new ActiveXObject("Microsoft.XMLHTTP");
+        } catch (e) {
+          req = false;
+        }
+      }
+    }
+  }
+    
+  /* real browsers */
+  if (!req && window.XMLHttpRequest) {
+    try {
+      req = new XMLHttpRequest();
+    } catch (e) {
+      req = false;
+    }
+  } 
+  
+  if (req) {
+    req.open('GET', url, false);
+    req.send(null);
+    return req.responseText;
+  } else {
+    return "Ajax error";  
+  }
+}
+
+
+function addEvent(elm, evType, fn, useCapture) {
+	if (elm.addEventListener) {
+	  elm.addEventListener(evType, fn, useCapture);  
+  	return true;
+	} else if (elm.attachEvent) {
+  	var r = elm.attachEvent('on' + evType, fn);  
+	  return r;  
+	} else {
+  	elm['on' + evType] = fn;
+	}
+}
+
+function insertIndices() {
+  pages = ["class", "file", "method"]
+  for (x in pages) { 
+    $(pages[x]).innerHTML += ajaxGet('fr_' + pages[x] + '_index.html').replace(/(href=")/g, '$1' + href_base);
+  }
+  /* mouseoverify method links */
+  links = $('method').getElementsByTagName('a');
+  for (var x = 0; x < links.length; x++) {
+    if (m = links[x].innerHTML.match(/(.*)\s\((.*)\)/)) {
+      links[x].innerHTML = m[1] + '<br>';
+      links[x].title = m[2];
+    }
+  }
+  /* this is stupid */
+  $('class').style.display = "block";
+  $('file').style.display = "block";
+  
+  /* has to be here because IE7 does not guarantee the onLoad callback order */
+  abbreviateIndicesInner(["class", "file"], 25, "a");
+  /* same, linkTitle() depends on the class link list */
+  linkTitle();
+}
+
+function abbreviateIndices() {
+  var ids = ["defined_in", "child_of", "includes", "requires", "method", "methods"];
+  abbreviateIndicesInner(ids, 25, 'a');
+  abbreviateIndicesInner(ids, 25, 'span');
+}
+
+function abbreviateIndicesInner(indices, amount, tag) {
+  for (var x = 0; x < indices.length; x++) { 
+    var the_index = $(indices[x]);
+    if (the_index) {
+      links = the_index.getElementsByTagName(tag);
+      for (var y = 0; y < links.length; y++) {
+        var link = links[y];
+        if (link.getElementsByTagName('span').length == 0 && link.getElementsByTagName('a').length == 0) {
+          // avoid nesting
+          link.innerHTML = link.innerHTML.replace(/<br>|\n/gi, '');
+          link.title = link.innerHTML;
+          link.innerHTML = abbreviate(link.innerHTML, amount) + '<br>';
+        }
+      }
+    }
+  }
+}
+
+function linkTitle() {
+  
+  /* grab the correct title element from the index */
+  var index_page = ajaxGet('index.html');
+  title_text = index_page.match(/<title>(.*)<\/title>/m)[1];
+  document.title = title_text + " - " + document.title;
+  var p = $('header').getElementsByTagName('p')[0]
+  if (p.innerHTML.match(/^\s*$/)) {
+    p.innerHTML = title_text;
+  } else {
+    p.innerHTML = title_text + ": " + p.innerHTML;
+  }
+  
+  /* set the link properly */
+  title_link = index_page.match(/<a\s+href="(.*?)"/)[1];
+  var element = $('title');
+  var item_type = "";
+  var item_name = "";
+  if (m = element.innerHTML.match(/(Class:|Module:|File:)\s*(.*)/)) {
+    item_type = m[1];
+    item_name = m[2];
+  } else {
+    item_name = element.innerHTML;
+  }
+  element.innerHTML = '<a href="' + href_base + title_link + '">' + item_type + " " + abbreviate(item_name, 45) + '</a>';
+  element.getElementsByTagName('a')[0].title = item_name
+  
+  /* breadcrumb navigation */
+  items = item_name.split("::");
+  items_new = item_name.split("::");
+  file_links = $('class').getElementsByTagName('a');
+  for (var x = 0; x < items.length - 1; x++ ){
+    var item = items[x];
+    link = ("/classes/" + items.slice(0,x).join("/") + "/" + item + ".html").replace('//', '/');
+    regex = new RegExp(RegExp.escape(link) + '$');
+    for (var y = 0; y < file_links.length; y++) {
+      if (file_links[y].href.match(regex)) {
+         items_new[x] = '<a href="' + href_base + link + '">' + item + '</a>';
+         break;
+      }
+    }  
+  }
+  $('item_name').innerHTML = item_type + ' ' + items_new.join(" :: ");
+}
+
+function abbreviate(s, size) {
+  while (s.length > size) {
+    var old_s = s;
+    s = s.replace(/\s|\n/mg, '');
+    s = s.replace(/([A-Z])[a-z]+/m, '$1');
+    if (!s || old_s == s) {
+      return "..." + s.substring(s.length - size, s.length);
+    }
+  }
+  return s;
+}
+
+function disableSubmit(event) {
+  var keyCode = event.keyCode ? event.keyCode : event.which ? event.which : event.charCode;
+  if (keyCode == 13) {
+    return false;
+  } else {
+    return true;
+  }
+}
+  
+function filterList(id, s, event) {
+  
+  /* some weak escaping */
+  s = s.replace(/[^\w\d\.\_\-\/\:\=\[\]\?\!]/g, '');
+  s = RegExp.escape(s);
+  
+  var show_all = false;
+  if (s.match(/^\s*$/)) {
+    show_all = true;
+  }
+  
+  links = $(id).getElementsByTagName('a')
+  regex = new RegExp(s, 'i');
+  
+  for (var x = 0; x < links.length; x++) {
+    var link = links[x];
+    if (show_all) {
+      link.style.display = 'inline';
+    } else {
+       if (link.innerHTML.match(regex)) {        
+         link.style.display = 'inline';
+       } else {
+         link.style.display = 'none';
+       }
+    }
+  }
+  return true;
+}
+
+RegExp.escape = function(text) {
+  if (!arguments.callee.sRE) {
+    var specials = ['/', '.', '*', '+', '?', '|', '(', ')', '[', ']', '{', '}', '\\'];
+    arguments.callee.sRE = new RegExp(
+      '(\\' + specials.join('|\\') + ')', 'g'
+    );
+  }
+  return text.replace(arguments.callee.sRE, '\\$1');
+}
+
+function hacks() {
+  // show the spacer if necessary, 
+  divs = document.getElementsByTagName('div');
+  for(var x = 0; x < divs.length; x++) {
+    if (divs[x].className && divs[x].className.match(/top/)) {
+      document.getElementById('spacer').style.display = 'block';
+    }
+  }
+  // remove extra colons from tables
+  tds = document.getElementsByTagName('td');
+  for(var x = 0; x < tds.length; x++) {
+    str = tds[x].innerHTML
+    if (str.charAt(str.length - 1) == ":") {
+      tds[x].innerHTML = str.slice(0, str.length - 1)
+    }
+  }
+}
+
+addEvent(window, 'load', insertIndices, false);
+addEvent(window, 'load', abbreviateIndices, false);
+addEvent(window, 'load', stripe, false);
+addEvent(window, 'load', highlightSymbols, false);
+addEvent(window, 'load', hacks, false);
+</script></head><body><div id="container"><div class="curve" id="preheader_curve_0"></div><div class="curve" id="preheader_curve_1"></div><div class="curve" id="preheader_curve_2"></div><div class="curve" id="preheader_curve_3"></div><div class="curve" id="preheader_curve_4"></div><div class="curve" id="preheader_curve_5"></div><div id="header"><p>
+</p><span><h1 id="title">
+Class: Memcached
+</h1></span>
+</div><div class="clear"></div><div id="left">
+<div class="navigation darker top" id="child_of"><h3>Child of</h3><span>
+
+Object
+</span></div>
+
+<div class="navigation darker top" id="defined_in"><h3>Defined in</h3>
+
+<a href="../files/lib/memcached_rb.html">lib/memcached.rb</a>
+
+
+<a href="../files/lib/memcached/behaviors_rb.html">lib/memcached/behaviors.rb</a>
+
+
+<a href="../files/lib/memcached/exceptions_rb.html">lib/memcached/exceptions.rb</a>
+
+
+<a href="../files/lib/memcached/experimental_rb.html">lib/memcached/experimental.rb</a>
+
+
+<a href="../files/lib/memcached/memcached_rb.html">lib/memcached/memcached.rb</a>
+
+
+<a href="../files/lib/memcached/rails_rb.html">lib/memcached/rails.rb</a>
+
+</div>
+
+
+
+<div class="navigation top" id="methods"><h3>Methods</h3>
+
+
+<a href='#M000014'>
+add<br/>
+</a>
+
+
+
+
+<a href='#M000018'>
+append<br/>
+</a>
+
+
+
+
+<a href='#M000020'>
+cas<br/>
+</a>
+
+
+
+
+<a href='#M000028'>
+check_return_code<br/>
+</a>
+
+
+
+
+<a href='#M000009'>
+clone<br/>
+</a>
+
+
+
+
+<a href='#M000021'>
+compare_and_swap<br/>
+</a>
+
+
+
+
+<a href='#M000016'>
+decrement<br/>
+</a>
+
+
+
+
+<a href='#M000022'>
+delete<br/>
+</a>
+
+
+
+
+<a href='#M000023'>
+flush<br/>
+</a>
+
+
+
+
+<a href='#M000024'>
+get<br/>
+</a>
+
+
+
+
+<a href='#M000025'>
+get_from_last<br/>
+</a>
+
+
+
+
+<a href='#M000015'>
+increment<br/>
+</a>
+
+
+
+
+<a href='#M000008'>
+namespace<br/>
+</a>
+
+
+
+
+<a href='#M000002'>
+new<br/>
+</a>
+
+
+
+
+<a href='#M000007'>
+prefix_key<br/>
+</a>
+
+
+
+
+<a href='#M000019'>
+prepend<br/>
+</a>
+
+
+
+
+<a href='#M000011'>
+quit<br/>
+</a>
+
+
+
+
+<a href='#M000017'>
+replace<br/>
+</a>
+
+
+
+
+<a href='#M000010'>
+reset<br/>
+</a>
+
+
+
+
+<a href='#M000026'>
+server_by_key<br/>
+</a>
+
+
+
+
+<a href='#M000004'>
+servers<br/>
+</a>
+
+
+
+
+<a href='#M000013'>
+set<br/>
+</a>
+
+
+
+
+<a href='#M000001'>
+set_behavior<br/>
+</a>
+
+
+
+
+<a href='#M000006'>
+set_namespace<br/>
+</a>
+
+
+
+
+<a href='#M000005'>
+set_prefix_key<br/>
+</a>
+
+
+
+
+<a href='#M000003'>
+set_servers<br/>
+</a>
+
+
+
+
+<a href='#M000012'>
+should_retry<br/>
+</a>
+
+
+
+
+<a href='#M000027'>
+stats<br/>
+</a>
+
+
+</div>
+<div id="spacer"></div><div class="navigation darker index" id="class_wrapper"><div class="list_header"><h3>All classes</h3></div><div class="list_header_link"><a onclick="toggle('class'); toggleText('class_link'); return false;" href="#" id="class_link">Hide...</a></div><div class="clear"></div><div id="class"><form><label for="filter_class">Filter:&nbsp;&nbsp;</label><input type="text" onKeyUp="return filterList('class', this.value, event);" onKeyPress="return disableSubmit(event);" id="filter_class"></input></form></div></div><div class="navigation darker index" id="file_wrapper"><div class="list_header"><h3>All files</h3></div><div class="list_header_link"><a onclick="toggle('file'); toggleText('file_link'); return false;" href="#" id="file_link">Hide...</a></div><div class="clear"></div><div id="file"><form><label for="filter_file">Filter:&nbsp;&nbsp;</label><input type="text" onKeyUp="return filterList('file', this.value, event);" onKeyPress="return disableSubmit(event);" id="filter_file"></input></form></div></div><div class="navigation darker index" id="method_wrapper"><div class="list_header"><h3>All methods</h3></div><div class="list_header_link"><a onclick="toggle('method'); toggleText('method_link'); return false;" href="#" id="method_link">Show...</a></div><div class="clear"></div><div id="method"><form><label for="filter_method">Filter:&nbsp;&nbsp;</label><input type="text" onKeyUp="return filterList('method', this.value, event);" onKeyPress="return disableSubmit(event);" id="filter_method"></input></form></div></div></div><div id="content">
+<h1 id="item_name">Class: Memcached</h1>
+
+<div id="description"><p>
+The <a href="Memcached.html">Memcached</a> client class.
+</p>
+</div>
+
+
+
+
+<p></p>
+
+<h1>Child modules and classes</h1><p>Module <a href="Memcached/Experimental.html" class="link">Memcached::Experimental</a><br />
+Class <a href="Memcached/Error.html" class="link">Memcached::Error</a><br />
+Class <a href="Memcached/Rails.html" class="link">Memcached::Rails</a><br />
+</p>
+
+<h1>Constants</h1><p><table><tr><th>Name</th><th>Value</th></tr>
+<tr>
+<td class="highlight">Lib</td>
+
+<td class="normal">Rlibmemcached</td>
+
+
+
+</tr>
+<tr>
+<td class="highlight">VERSION</td>
+
+<td class="normal">File.read(&quot;#{File.dirname(__FILE__)}/../CHANGELOG&quot;)[/v([\d\.]+)\./, 1]</td>
+
+
+
+</tr>
+<tr>
+<td class="highlight">FLAGS</td>
+
+<td class="normal">0x0</td>
+
+
+
+</tr>
+<tr>
+<td class="highlight">DEFAULTS</td>
+
+<td class="normal">{     :hash =&gt; :fnv1_32,     :no_block =&gt; false,     :noreply =&gt; false,     :distribution =&gt; :consistent_ketama,     :ketama_weighted =&gt; true,     :buffer_requests =&gt; false,     :cache_lookups =&gt; true,     :support_cas =&gt; false,     :tcp_nodelay =&gt; false,     :show_backtraces =&gt; false,     :retry_timeout =&gt; 30,     :timeout =&gt; 0.25,     :rcv_timeout =&gt; nil,     :poll_timeout =&gt; nil,     :connect_timeout =&gt; 4,     :prefix_key =&gt; '',     :prefix_delimiter =&gt; '',     :hash_with_prefix_key =&gt; true,     :default_ttl =&gt; 604800,     :default_weight =&gt; 8,     :sort_hosts =&gt; false,     :auto_eject_hosts =&gt; true,     :server_failure_limit =&gt; 2,     :verify_key =&gt; true,     :use_udp =&gt; false,     :binary_protocol =&gt; false,     :credentials =&gt; nil,     :experimental_features =&gt; false,     :exception_retry_limit =&gt; 5,     :exceptions_to_retry =&gt; [         Memcached::ServerIsMarkedDead,         Memcached::ATimeoutOccurred,         Memcached::ConnectionBindFailure,         Memcached::ConnectionFailure,         Memcached::ConnectionSocketCreateFailure,         Memcached::Failure,         Memcached::MemoryAllocationFailure,         Memcached::ReadFailure,         Memcached::ServerError,         Memcached::SystemError,         Memcached::UnknownReadFailure,         Memcached::WriteFailure]</td>
+
+
+
+</tr>
+</table></p>
+
+
+<h1>Attributes</h1><p><table><tr><th>Name</th><th>Read/write?</th></tr>
+<tr>
+<td class="highlight">options</td>
+
+
+
+
+<td class="normal">R</td>
+</tr>
+</table></p>
+
+
+<h1>Public Class Methods</h1>
+
+
+<a class="small" name="M000002"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000002'>
+
+
+new
+
+(servers = nil, opts = {})
+
+</a>
+</h3>
+<p>
+Create a <a href="Memcached.html#M000002">new</a> <a
+href="Memcached.html">Memcached</a> instance. Accepts string or array of
+server strings, as well an an optional configuration hash.
+</p>
+<pre>
+  Memcached.new('localhost', ...) # A single server
+  Memcached.new(['web001:11212', 'web002:11212'], ...) # Two servers with custom ports
+  Memcached.new(['web001:11211:2', 'web002:11211:8'], ...) # Two servers with default ports and explicit weights
+</pre>
+<p>
+Weights only affect Ketama hashing. If you use Ketama hashing and
+don&#8216;t specify a weight, the client will poll each server&#8216;s <a
+href="Memcached.html#M000027">stats</a> and use its size as the weight.
+</p>
+<p>
+Valid option parameters are:
+</p>
+<table>
+<tr><td valign="top"><tt>:<a href="Memcached.html#M000007">prefix_key</a></tt>:</td><td>A string to <a href="Memcached.html#M000019">prepend</a> to every key, for
+namespacing. Max length is 127. Defaults to the empty string.
+
+</td></tr>
+<tr><td valign="top"><tt>:prefix_delimiter</tt>:</td><td>A character to <a href="Memcached.html#M000018">append</a> to the prefix
+key. Defaults to the empty string.
+
+</td></tr>
+<tr><td valign="top"><tt>:hash</tt>:</td><td>The name of a hash function to use. Possible values are: <tt>:crc</tt>,
+<tt>:default</tt>, <tt>:fnv1_32</tt>, <tt>:fnv1_64</tt>,
+<tt>:fnv1a_32</tt>, <tt>:fnv1a_64</tt>, <tt>:hsieh</tt>, <tt>:md5</tt>,
+<tt>:murmur</tt>, and <tt>:none</tt>. <tt>:fnv1_32</tt> is fast and well
+known, and is the default. Use <tt>:md5</tt> for compatibility with other
+ketama clients. <tt>:none</tt> is for use when there is a single server,
+and performs no actual hashing.
+
+</td></tr>
+<tr><td valign="top"><tt>:distribution</tt>:</td><td>Either <tt>:modula</tt>, <tt>:consistent_ketama</tt>,
+<tt>:consistent_wheel</tt>, or <tt>:ketama</tt>. Defaults to
+<tt>:ketama</tt>.
+
+</td></tr>
+<tr><td valign="top"><tt>:server_failure_limit</tt>:</td><td>How many consecutive failures to allow before marking a host as dead. Has
+no effect unless <tt>:retry_timeout</tt> is also <a
+href="Memcached.html#M000013">set</a>.
+
+</td></tr>
+<tr><td valign="top"><tt>:retry_timeout</tt>:</td><td>How long to wait until retrying a dead server. Has no effect unless
+<tt>:server_failure_limit</tt> is non-zero. Defaults to <tt>30</tt>.
+
+</td></tr>
+<tr><td valign="top"><tt>:auto_eject_hosts</tt>:</td><td>Whether to temporarily eject dead hosts from the pool. Defaults to
+<tt>true</tt>. Note that in the event of an ejection,
+<tt>:auto_eject_hosts</tt> will remap the entire pool unless
+<tt>:distribution</tt> is <a href="Memcached.html#M000013">set</a> to
+<tt>:consistent</tt>.
+
+</td></tr>
+<tr><td valign="top"><tt>:exception_retry_limit</tt>:</td><td>How many times to retry before raising exceptions in
+<tt>:exceptions_to_retry</tt>. Defaults to <tt>5</tt>.
+
+</td></tr>
+<tr><td valign="top"><tt>:exceptions_to_retry</tt>:</td><td>Which exceptions to retry. Defaults to <b>ServerIsMarkedDead</b>,
+<b>ATimeoutOccurred</b>, <b>ConnectionBindFailure</b>,
+<b>ConnectionFailure</b>, <b>ConnectionSocketCreateFailure</b>,
+<b>Failure</b>, <b>MemoryAllocationFailure</b>, <b>ReadFailure</b>,
+<b>ServerError</b>, <b>SystemError</b>, <b>UnknownReadFailure</b>, and
+<b>WriteFailure</b>.
+
+</td></tr>
+<tr><td valign="top"><tt>:cache_lookups</tt>:</td><td>Whether to cache hostname lookups for the life of the instance. Defaults to
+<tt>true</tt>.
+
+</td></tr>
+<tr><td valign="top"><tt>:support_cas</tt>:</td><td>Flag CAS support in the client. Accepts <tt>true</tt> or <tt>false</tt>.
+Defaults to <tt>false</tt> because it imposes a slight performance penalty.
+Note that your server must also support CAS or you will trigger
+<b>ProtocolError</b> exceptions.
+
+</td></tr>
+<tr><td valign="top"><tt>:tcp_nodelay</tt>:</td><td>Turns on the no-delay feature for connecting sockets. Accepts <tt>true</tt>
+or <tt>false</tt>. Performance may or may not change, depending on your
+system.
+
+</td></tr>
+<tr><td valign="top"><tt>:no_block</tt>:</td><td>Whether to use pipelining for writes. Defaults to <tt>false</tt>.
+
+</td></tr>
+<tr><td valign="top"><tt>:buffer_requests</tt>:</td><td>Whether to use an internal write buffer. Accepts <tt>true</tt> or
+<tt>false</tt>. Calling <tt><a href="Memcached.html#M000024">get</a></tt>
+or closing the connection will force the buffer to <a
+href="Memcached.html#M000023">flush</a>. Client behavior is undefined
+unless <tt>:no_block</tt> is enabled. Defaults to <tt>false</tt>.
+
+</td></tr>
+<tr><td valign="top"><tt>:noreply</tt>:</td><td>Ask server not to reply for storage commands. Client behavior is undefined
+unless <tt>:no_block</tt> and <tt>:buffer_requests</tt> are enabled.
+Defaults to <tt>false</tt>.
+
+</td></tr>
+<tr><td valign="top"><tt>:show_backtraces</tt>:</td><td>Whether <b>NotFound</b> and <b>NotStored</b> exceptions should include
+backtraces. Generating backtraces is slow, so this is off by default. Turn
+it on to ease debugging.
+
+</td></tr>
+<tr><td valign="top"><tt>:connect_timeout</tt>:</td><td>How long to wait for a connection to a server. Defaults to 2 seconds. Set
+to <tt>0</tt> if you want to wait forever.
+
+</td></tr>
+<tr><td valign="top"><tt>:timeout</tt>:</td><td>How long to wait for a response from the server. Defaults to 0.25 seconds.
+Set to <tt>0</tt> if you want to wait forever.
+
+</td></tr>
+<tr><td valign="top"><tt>:default_ttl</tt>:</td><td>The <tt>ttl</tt> to use on <a href="Memcached.html#M000013">set</a> if no
+<tt>ttl</tt> is specified, in seconds. Defaults to one week. Set to
+<tt>0</tt> if you want things to never expire.
+
+</td></tr>
+<tr><td valign="top"><tt>:default_weight</tt>:</td><td>The weight to use if <tt>:ketama_weighted</tt> is <tt>true</tt>, but no
+weight is specified for a server.
+
+</td></tr>
+<tr><td valign="top"><tt>:hash_with_prefix_key</tt>:</td><td>Whether to include the prefix when calculating which server a key falls on.
+Defaults to <tt>true</tt>.
+
+</td></tr>
+<tr><td valign="top"><tt>:use_udp</tt>:</td><td>Use the UDP protocol to reduce connection overhead. Defaults to false.
+
+</td></tr>
+<tr><td valign="top"><tt>:binary_protocol</tt>:</td><td>Use the binary protocol. Defaults to false. Please note that using the
+binary protocol is usually <b>slower</b> than the ASCII protocol.
+
+</td></tr>
+<tr><td valign="top"><tt>:sort_hosts</tt>:</td><td>Whether to force the server list to stay sorted. This defeats consistent
+hashing and is rarely useful.
+
+</td></tr>
+<tr><td valign="top"><tt>:verify_key</tt>:</td><td>Validate keys before accepting them. Never disable this.
+
+</td></tr>
+</table>
+<p>
+Please note that when <tt>:no_block =&gt; true</tt>, update methods do not
+raise on errors. For example, if you try to <tt><a
+href="Memcached.html#M000013">set</a></tt> an invalid key, it will appear
+to succeed. The actual setting of the key occurs after libmemcached has
+returned control to your program, so there is no way to backtrack and raise
+the exception.
+</p>
+
+<p class="source_link" id="M000002-show-link"><a onclick="toggle('M000002-source'); toggleText('M000002-link'); return false;" href="#" id="M000002-link">Show source...</a></p><div class="source" id="M000002-source"><pre>     <span class="ruby-comment cmt"># File lib/memcached/memcached.rb, line 102</span>
+102:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">initialize</span>(<span class="ruby-identifier">servers</span> = <span class="ruby-keyword kw">nil</span>, <span class="ruby-identifier">opts</span> = {})
+103:     <span class="ruby-ivar">@struct</span> = <span class="ruby-constant">Lib</span>.<span class="ruby-identifier">memcached_create</span>(<span class="ruby-keyword kw">nil</span>)
+104: 
+105:     <span class="ruby-comment cmt"># Merge option defaults and discard meaningless keys</span>
+106:     <span class="ruby-ivar">@options</span> = <span class="ruby-constant">DEFAULTS</span>.<span class="ruby-identifier">merge</span>(<span class="ruby-identifier">opts</span>)
+107:     <span class="ruby-ivar">@options</span>.<span class="ruby-identifier">delete_if</span> { <span class="ruby-operator">|</span><span class="ruby-identifier">k</span>,<span class="ruby-identifier">v</span><span class="ruby-operator">|</span> <span class="ruby-keyword kw">not</span> <span class="ruby-constant">DEFAULTS</span>.<span class="ruby-identifier">keys</span>.<span class="ruby-identifier">include?</span> <span class="ruby-identifier">k</span> }
+108:     <span class="ruby-ivar">@default_ttl</span> = <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:default_ttl</span>]
+109: 
+110:     <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">servers</span> <span class="ruby-operator">==</span> <span class="ruby-keyword kw">nil</span> <span class="ruby-operator">||</span> <span class="ruby-identifier">servers</span> <span class="ruby-operator">==</span> []
+111:       <span class="ruby-keyword kw">if</span> <span class="ruby-constant">ENV</span>.<span class="ruby-identifier">key?</span>(<span class="ruby-value str">&quot;MEMCACHE_SERVERS&quot;</span>)
+112:         <span class="ruby-identifier">servers</span> = <span class="ruby-constant">ENV</span>[<span class="ruby-value str">&quot;MEMCACHE_SERVERS&quot;</span>].<span class="ruby-identifier">split</span>(<span class="ruby-value str">&quot;,&quot;</span>).<span class="ruby-identifier">map</span> <span class="ruby-keyword kw">do</span> <span class="ruby-operator">|</span> <span class="ruby-identifier">s</span> <span class="ruby-operator">|</span> <span class="ruby-identifier">s</span>.<span class="ruby-identifier">strip</span> <span class="ruby-keyword kw">end</span>
+113:       <span class="ruby-keyword kw">else</span>
+114:         <span class="ruby-identifier">servers</span> = <span class="ruby-value str">&quot;127.0.0.1:11211&quot;</span>
+115:       <span class="ruby-keyword kw">end</span>
+116:     <span class="ruby-keyword kw">end</span>
+117: 
+118:     <span class="ruby-keyword kw">if</span> <span class="ruby-operator">!</span><span class="ruby-identifier">options</span>[<span class="ruby-identifier">:credentials</span>] <span class="ruby-keyword kw">and</span> <span class="ruby-constant">ENV</span>[<span class="ruby-value str">&quot;MEMCACHE_USERNAME&quot;</span>] <span class="ruby-keyword kw">and</span> <span class="ruby-constant">ENV</span>[<span class="ruby-value str">&quot;MEMCACHE_PASSWORD&quot;</span>]
+119:       <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:credentials</span>] = [<span class="ruby-constant">ENV</span>[<span class="ruby-value str">&quot;MEMCACHE_USERNAME&quot;</span>], <span class="ruby-constant">ENV</span>[<span class="ruby-value str">&quot;MEMCACHE_PASSWORD&quot;</span>]]
+120:     <span class="ruby-keyword kw">end</span>
+121: 
+122:     <span class="ruby-identifier">instance_eval</span> { <span class="ruby-identifier">send</span>(<span class="ruby-identifier">:extend</span>, <span class="ruby-constant">Experimental</span>) } <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:experimental_features</span>]
+123: 
+124:     <span class="ruby-comment cmt"># SASL requires binary protocol</span>
+125:     <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:binary_protocol</span>] = <span class="ruby-keyword kw">true</span> <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:credentials</span>]
+126: 
+127:     <span class="ruby-comment cmt"># UDP requires noreply</span>
+128:     <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:noreply</span>] = <span class="ruby-keyword kw">true</span> <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:use_udp</span>]
+129: 
+130:     <span class="ruby-comment cmt"># Buffering requires non-blocking</span>
+131:     <span class="ruby-comment cmt"># FIXME This should all be wrapped up in a single :pipeline option.</span>
+132:     <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:no_block</span>] = <span class="ruby-keyword kw">true</span> <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:buffer_requests</span>]
+133: 
+134:     <span class="ruby-comment cmt"># Disallow weights without ketama</span>
+135:     <span class="ruby-identifier">options</span>.<span class="ruby-identifier">delete</span>(<span class="ruby-identifier">:ketama_weighted</span>) <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:distribution</span>] <span class="ruby-operator">!=</span> <span class="ruby-identifier">:consistent_ketama</span>
+136: 
+137:     <span class="ruby-comment cmt"># Disallow :sort_hosts with consistent hashing</span>
+138:     <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:sort_hosts</span>] <span class="ruby-keyword kw">and</span> <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:distribution</span>] <span class="ruby-operator">==</span> <span class="ruby-identifier">:consistent</span>
+139:       <span class="ruby-identifier">raise</span> <span class="ruby-constant">ArgumentError</span>, <span class="ruby-value str">&quot;:sort_hosts defeats :consistent hashing&quot;</span>
+140:     <span class="ruby-keyword kw">end</span>
+141: 
+142:     <span class="ruby-comment cmt"># Read timeouts</span>
+143:     <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:rcv_timeout</span>] <span class="ruby-operator">||=</span> <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:timeout</span>]
+144:     <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:poll_timeout</span>] <span class="ruby-operator">||=</span> <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:timeout</span>]
+145: 
+146:     <span class="ruby-comment cmt"># Set the prefix key. Support the legacy name.</span>
+147:     <span class="ruby-identifier">set_prefix_key</span>(<span class="ruby-identifier">options</span>[<span class="ruby-identifier">:prefix_key</span>] <span class="ruby-operator">||</span> <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:namespace</span>])
+148: 
+149:     <span class="ruby-comment cmt"># Set the behaviors and credentials on the struct</span>
+150:     <span class="ruby-identifier">set_behaviors</span>
+151:     <span class="ruby-identifier">set_credentials</span>
+152: 
+153:     <span class="ruby-comment cmt"># Freeze the hash</span>
+154:     <span class="ruby-identifier">options</span>.<span class="ruby-identifier">freeze</span>
+155: 
+156:     <span class="ruby-comment cmt"># Set the servers on the struct</span>
+157:     <span class="ruby-identifier">set_servers</span>(<span class="ruby-identifier">servers</span>)
+158: 
+159:     <span class="ruby-comment cmt"># Not found exceptions</span>
+160:     <span class="ruby-keyword kw">unless</span> <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:show_backtraces</span>]
+161:       <span class="ruby-ivar">@not_found</span> = <span class="ruby-constant">NotFound</span>.<span class="ruby-identifier">new</span>
+162:       <span class="ruby-ivar">@not_found</span>.<span class="ruby-identifier">no_backtrace</span> = <span class="ruby-keyword kw">true</span>
+163:       <span class="ruby-ivar">@not_stored</span> = <span class="ruby-constant">NotStored</span>.<span class="ruby-identifier">new</span>
+164:       <span class="ruby-ivar">@not_stored</span>.<span class="ruby-identifier">no_backtrace</span> = <span class="ruby-keyword kw">true</span>
+165:     <span class="ruby-keyword kw">end</span>
+166:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+
+<h1>Public Instance Methods</h1>
+
+
+<a class="small" name="M000014"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000014'>
+
+
+add
+
+(key, value, ttl=@default_ttl, marshal=true, flags=FLAGS)
+
+</a>
+</h3>
+<p>
+Add a key/value pair. Raises <b>Memcached::NotStored</b> if the key already
+exists on the server. The parameters are the same as <tt><a
+href="Memcached.html#M000013">set</a></tt>.
+</p>
+
+<p class="source_link" id="M000014-show-link"><a onclick="toggle('M000014-source'); toggleText('M000014-link'); return false;" href="#" id="M000014-link">Show source...</a></p><div class="source" id="M000014-source"><pre>     <span class="ruby-comment cmt"># File lib/memcached/memcached.rb, line 313</span>
+313:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">add</span>(<span class="ruby-identifier">key</span>, <span class="ruby-identifier">value</span>, <span class="ruby-identifier">ttl</span>=<span class="ruby-ivar">@default_ttl</span>, <span class="ruby-identifier">marshal</span>=<span class="ruby-keyword kw">true</span>, <span class="ruby-identifier">flags</span>=<span class="ruby-constant">FLAGS</span>)
+314:     <span class="ruby-identifier">value</span> = <span class="ruby-identifier">marshal</span> <span class="ruby-value">? </span><span class="ruby-constant">Marshal</span>.<span class="ruby-identifier">dump</span>(<span class="ruby-identifier">value</span>) <span class="ruby-operator">:</span> <span class="ruby-identifier">value</span>
+315:     <span class="ruby-keyword kw">begin</span>
+316:       <span class="ruby-identifier">check_return_code</span>(
+317:         <span class="ruby-constant">Lib</span>.<span class="ruby-identifier">memcached_add</span>(<span class="ruby-ivar">@struct</span>, <span class="ruby-identifier">key</span>, <span class="ruby-identifier">value</span>, <span class="ruby-identifier">ttl</span>, <span class="ruby-identifier">flags</span>),
+318:         <span class="ruby-identifier">key</span>
+319:       )
+320:     <span class="ruby-keyword kw">rescue</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">e</span>
+321:       <span class="ruby-identifier">tries</span> <span class="ruby-operator">||=</span> <span class="ruby-value">0</span>
+322:       <span class="ruby-identifier">raise</span> <span class="ruby-keyword kw">unless</span> <span class="ruby-identifier">tries</span> <span class="ruby-operator">&lt;</span> <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:exception_retry_limit</span>] <span class="ruby-operator">&amp;&amp;</span> <span class="ruby-identifier">should_retry</span>(<span class="ruby-identifier">e</span>)
+323:       <span class="ruby-identifier">tries</span> <span class="ruby-operator">+=</span> <span class="ruby-value">1</span>
+324:       <span class="ruby-keyword kw">retry</span>
+325:     <span class="ruby-keyword kw">end</span>
+326:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000018"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000018'>
+
+
+append
+
+(key, value)
+
+</a>
+</h3>
+<p>
+Appends a string to a key&#8216;s value. Accepts a String <tt>key</tt> and
+a String <tt>value</tt>. Raises <b>Memcached::NotFound</b> if the key does
+not exist on the server.
+</p>
+<p>
+Note that the key must be initialized to an unmarshalled string first, via
+<tt><a href="Memcached.html#M000013">set</a></tt>, <tt><a
+href="Memcached.html#M000014">add</a></tt>, or <tt><a
+href="Memcached.html#M000017">replace</a></tt> with <tt>marshal</tt> <a
+href="Memcached.html#M000013">set</a> to <tt>false</tt>.
+</p>
+
+<p class="source_link" id="M000018-show-link"><a onclick="toggle('M000018-source'); toggleText('M000018-link'); return false;" href="#" id="M000018-link">Show source...</a></p><div class="source" id="M000018-source"><pre>     <span class="ruby-comment cmt"># File lib/memcached/memcached.rb, line 380</span>
+380:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">append</span>(<span class="ruby-identifier">key</span>, <span class="ruby-identifier">value</span>)
+381:     <span class="ruby-comment cmt"># Requires memcached 1.2.4</span>
+382:     <span class="ruby-identifier">check_return_code</span>(
+383:       <span class="ruby-constant">Lib</span>.<span class="ruby-identifier">memcached_append</span>(<span class="ruby-ivar">@struct</span>, <span class="ruby-identifier">key</span>, <span class="ruby-identifier">value</span>.<span class="ruby-identifier">to_s</span>, <span class="ruby-constant">IGNORED</span>, <span class="ruby-constant">IGNORED</span>),
+384:       <span class="ruby-identifier">key</span>
+385:     )
+386:   <span class="ruby-keyword kw">rescue</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">e</span>
+387:     <span class="ruby-identifier">tries</span> <span class="ruby-operator">||=</span> <span class="ruby-value">0</span>
+388:     <span class="ruby-identifier">raise</span> <span class="ruby-keyword kw">unless</span> <span class="ruby-identifier">tries</span> <span class="ruby-operator">&lt;</span> <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:exception_retry_limit</span>] <span class="ruby-operator">&amp;&amp;</span> <span class="ruby-identifier">should_retry</span>(<span class="ruby-identifier">e</span>)
+389:     <span class="ruby-identifier">tries</span> <span class="ruby-operator">+=</span> <span class="ruby-value">1</span>
+390:     <span class="ruby-keyword kw">retry</span>
+391:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000020"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000020'>
+
+
+cas
+
+(key, ttl=@default_ttl, marshal=true, flags=FLAGS) {|value| ...}
+
+</a>
+</h3>
+<p>
+Reads a key&#8216;s value from the server and yields it to a block.
+Replaces the key&#8216;s value with the result of the block as long as the
+key hasn&#8216;t been updated in the meantime, otherwise raises
+<b>Memcached::NotStored</b>. Accepts a String <tt>key</tt> and a block.
+</p>
+<p>
+Also accepts an optional <tt>ttl</tt> value.
+</p>
+<p>
+CAS stands for &quot;compare and swap&quot;, and avoids the need for manual
+key mutexing. CAS support must be enabled in <a
+href="Memcached.html#M000002">Memcached.new</a> or a
+<b>Memcached::ClientError</b> will be raised. Note that CAS may be buggy in
+memcached itself. :retry_on_exceptions does not apply to this method
+</p>
+
+<p class="source_link" id="M000020-show-link"><a onclick="toggle('M000020-source'); toggleText('M000020-link'); return false;" href="#" id="M000020-link">Show source...</a></p><div class="source" id="M000020-source"><pre>     <span class="ruby-comment cmt"># File lib/memcached/memcached.rb, line 413</span>
+413:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">cas</span>(<span class="ruby-identifier">key</span>, <span class="ruby-identifier">ttl</span>=<span class="ruby-ivar">@default_ttl</span>, <span class="ruby-identifier">marshal</span>=<span class="ruby-keyword kw">true</span>, <span class="ruby-identifier">flags</span>=<span class="ruby-constant">FLAGS</span>)
+414:     <span class="ruby-identifier">raise</span> <span class="ruby-constant">ClientError</span>, <span class="ruby-value str">&quot;CAS not enabled for this Memcached instance&quot;</span> <span class="ruby-keyword kw">unless</span> <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:support_cas</span>]
+415: 
+416:     <span class="ruby-keyword kw">begin</span>
+417:       <span class="ruby-identifier">value</span>, <span class="ruby-identifier">flags</span>, <span class="ruby-identifier">ret</span> = <span class="ruby-constant">Lib</span>.<span class="ruby-identifier">memcached_get_rvalue</span>(<span class="ruby-ivar">@struct</span>, <span class="ruby-identifier">key</span>)
+418:       <span class="ruby-identifier">check_return_code</span>(<span class="ruby-identifier">ret</span>, <span class="ruby-identifier">key</span>)
+419:     <span class="ruby-keyword kw">rescue</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">e</span>
+420:       <span class="ruby-identifier">tries_for_get</span> <span class="ruby-operator">||=</span> <span class="ruby-value">0</span>
+421:       <span class="ruby-identifier">raise</span> <span class="ruby-keyword kw">unless</span> <span class="ruby-identifier">tries_for_get</span> <span class="ruby-operator">&lt;</span> <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:exception_retry_limit</span>] <span class="ruby-operator">&amp;&amp;</span> <span class="ruby-identifier">should_retry</span>(<span class="ruby-identifier">e</span>)
+422:       <span class="ruby-identifier">tries_for_get</span> <span class="ruby-operator">+=</span> <span class="ruby-value">1</span>
+423:       <span class="ruby-keyword kw">retry</span>
+424:     <span class="ruby-keyword kw">end</span>
+425: 
+426:     <span class="ruby-identifier">cas</span> = <span class="ruby-ivar">@struct</span>.<span class="ruby-identifier">result</span>.<span class="ruby-identifier">cas</span>
+427: 
+428:     <span class="ruby-identifier">value</span> = <span class="ruby-constant">Marshal</span>.<span class="ruby-identifier">load</span>(<span class="ruby-identifier">value</span>) <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">marshal</span>
+429:     <span class="ruby-identifier">value</span> = <span class="ruby-keyword kw">yield</span> <span class="ruby-identifier">value</span>
+430:     <span class="ruby-identifier">value</span> = <span class="ruby-constant">Marshal</span>.<span class="ruby-identifier">dump</span>(<span class="ruby-identifier">value</span>) <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">marshal</span>
+431: 
+432:     <span class="ruby-keyword kw">begin</span>
+433:       <span class="ruby-identifier">check_return_code</span>(
+434:         <span class="ruby-constant">Lib</span>.<span class="ruby-identifier">memcached_cas</span>(<span class="ruby-ivar">@struct</span>, <span class="ruby-identifier">key</span>, <span class="ruby-identifier">value</span>, <span class="ruby-identifier">ttl</span>, <span class="ruby-identifier">flags</span>, <span class="ruby-identifier">cas</span>),
+435:         <span class="ruby-identifier">key</span>
+436:       )
+437:     <span class="ruby-keyword kw">rescue</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">e</span>
+438:       <span class="ruby-identifier">tries_for_cas</span> <span class="ruby-operator">||=</span> <span class="ruby-value">0</span>
+439:       <span class="ruby-identifier">raise</span> <span class="ruby-keyword kw">unless</span> <span class="ruby-identifier">tries_for_cas</span> <span class="ruby-operator">&lt;</span> <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:exception_retry_limit</span>] <span class="ruby-operator">&amp;&amp;</span> <span class="ruby-identifier">should_retry</span>(<span class="ruby-identifier">e</span>)
+440:       <span class="ruby-identifier">tries_for_cas</span> <span class="ruby-operator">+=</span> <span class="ruby-value">1</span>
+441:       <span class="ruby-keyword kw">retry</span>
+442:     <span class="ruby-keyword kw">end</span>
+443:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000009"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000009'>
+
+
+clone
+
+()
+
+</a>
+</h3>
+<p>
+Safely copy this instance. Returns a <a href="Memcached.html">Memcached</a>
+instance.
+</p>
+<p>
+<tt><a href="Memcached.html#M000009">clone</a></tt> is useful for
+threading, since each thread must have its own unshared <a
+href="Memcached.html">Memcached</a> object.
+</p>
+
+<p class="source_link" id="M000009-show-link"><a onclick="toggle('M000009-source'); toggleText('M000009-link'); return false;" href="#" id="M000009-link">Show source...</a></p><div class="source" id="M000009-source"><pre>     <span class="ruby-comment cmt"># File lib/memcached/memcached.rb, line 230</span>
+230:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">clone</span>
+231:     <span class="ruby-identifier">memcached</span> = <span class="ruby-keyword kw">super</span>
+232:     <span class="ruby-identifier">struct</span> = <span class="ruby-constant">Lib</span>.<span class="ruby-identifier">memcached_clone</span>(<span class="ruby-keyword kw">nil</span>, <span class="ruby-ivar">@struct</span>)
+233:     <span class="ruby-identifier">memcached</span>.<span class="ruby-identifier">instance_variable_set</span>(<span class="ruby-value str">'@struct'</span>, <span class="ruby-identifier">struct</span>)
+234:     <span class="ruby-identifier">memcached</span>
+235:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000021"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000021'>
+
+
+compare_and_swap
+
+(key, ttl=@default_ttl, marshal=true, flags=FLAGS)
+
+</a>
+</h3>
+<p>
+Alias for <a href="Memcached.html#M000020">cas</a>
+</p>
+
+</div>
+
+<a class="small" name="M000016"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000016'>
+
+
+decrement
+
+(key, offset=1)
+
+</a>
+</h3>
+<p>
+Decrement a key&#8216;s value. The parameters and exception behavior are
+the same as <tt><a href="Memcached.html#M000015">increment</a></tt>.
+</p>
+
+<p class="source_link" id="M000016-show-link"><a onclick="toggle('M000016-source'); toggleText('M000016-link'); return false;" href="#" id="M000016-link">Show source...</a></p><div class="source" id="M000016-source"><pre>     <span class="ruby-comment cmt"># File lib/memcached/memcached.rb, line 345</span>
+345:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">decrement</span>(<span class="ruby-identifier">key</span>, <span class="ruby-identifier">offset</span>=<span class="ruby-value">1</span>)
+346:     <span class="ruby-identifier">ret</span>, <span class="ruby-identifier">value</span> = <span class="ruby-constant">Lib</span>.<span class="ruby-identifier">memcached_decrement</span>(<span class="ruby-ivar">@struct</span>, <span class="ruby-identifier">key</span>, <span class="ruby-identifier">offset</span>)
+347:     <span class="ruby-identifier">check_return_code</span>(<span class="ruby-identifier">ret</span>, <span class="ruby-identifier">key</span>)
+348:     <span class="ruby-identifier">value</span>
+349:   <span class="ruby-keyword kw">rescue</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">e</span>
+350:     <span class="ruby-identifier">tries</span> <span class="ruby-operator">||=</span> <span class="ruby-value">0</span>
+351:     <span class="ruby-identifier">raise</span> <span class="ruby-keyword kw">unless</span> <span class="ruby-identifier">tries</span> <span class="ruby-operator">&lt;</span> <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:exception_retry_limit</span>] <span class="ruby-operator">&amp;&amp;</span> <span class="ruby-identifier">should_retry</span>(<span class="ruby-identifier">e</span>)
+352:     <span class="ruby-identifier">tries</span> <span class="ruby-operator">+=</span> <span class="ruby-value">1</span>
+353:     <span class="ruby-keyword kw">retry</span>
+354:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000022"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000022'>
+
+
+delete
+
+(key)
+
+</a>
+</h3>
+<p>
+Deletes a key/value pair from the server. Accepts a String <tt>key</tt>.
+Raises <b>Memcached::NotFound</b> if the key does not exist.
+</p>
+
+<p class="source_link" id="M000022-show-link"><a onclick="toggle('M000022-source'); toggleText('M000022-link'); return false;" href="#" id="M000022-link">Show source...</a></p><div class="source" id="M000022-source"><pre>     <span class="ruby-comment cmt"># File lib/memcached/memcached.rb, line 450</span>
+450:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">delete</span>(<span class="ruby-identifier">key</span>)
+451:     <span class="ruby-identifier">check_return_code</span>(
+452:       <span class="ruby-constant">Lib</span>.<span class="ruby-identifier">memcached_delete</span>(<span class="ruby-ivar">@struct</span>, <span class="ruby-identifier">key</span>, <span class="ruby-constant">IGNORED</span>),
+453:       <span class="ruby-identifier">key</span>
+454:     )
+455:   <span class="ruby-keyword kw">rescue</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">e</span>
+456:     <span class="ruby-identifier">tries</span> <span class="ruby-operator">||=</span> <span class="ruby-value">0</span>
+457:     <span class="ruby-identifier">raise</span> <span class="ruby-keyword kw">unless</span> <span class="ruby-identifier">tries</span> <span class="ruby-operator">&lt;</span> <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:exception_retry_limit</span>] <span class="ruby-operator">&amp;&amp;</span> <span class="ruby-identifier">should_retry</span>(<span class="ruby-identifier">e</span>)
+458:     <span class="ruby-identifier">tries</span> <span class="ruby-operator">+=</span> <span class="ruby-value">1</span>
+459:     <span class="ruby-keyword kw">retry</span>
+460:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000023"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000023'>
+
+
+flush
+
+()
+
+</a>
+</h3>
+<p>
+Flushes all key/value pairs from all the <a
+href="Memcached.html#M000004">servers</a>.
+</p>
+
+<p class="source_link" id="M000023-show-link"><a onclick="toggle('M000023-source'); toggleText('M000023-link'); return false;" href="#" id="M000023-link">Show source...</a></p><div class="source" id="M000023-source"><pre>     <span class="ruby-comment cmt"># File lib/memcached/memcached.rb, line 463</span>
+463:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">flush</span>
+464:     <span class="ruby-identifier">check_return_code</span>(
+465:       <span class="ruby-constant">Lib</span>.<span class="ruby-identifier">memcached_flush</span>(<span class="ruby-ivar">@struct</span>, <span class="ruby-constant">IGNORED</span>)
+466:     )
+467:   <span class="ruby-keyword kw">rescue</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">e</span>
+468:     <span class="ruby-identifier">tries</span> <span class="ruby-operator">||=</span> <span class="ruby-value">0</span>
+469:     <span class="ruby-identifier">raise</span> <span class="ruby-keyword kw">unless</span> <span class="ruby-identifier">tries</span> <span class="ruby-operator">&lt;</span> <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:exception_retry_limit</span>] <span class="ruby-operator">&amp;&amp;</span> <span class="ruby-identifier">should_retry</span>(<span class="ruby-identifier">e</span>)
+470:     <span class="ruby-identifier">tries</span> <span class="ruby-operator">+=</span> <span class="ruby-value">1</span>
+471:     <span class="ruby-keyword kw">retry</span>
+472:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000024"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000024'>
+
+
+get
+
+(keys, marshal=true)
+
+</a>
+</h3>
+<p>
+Gets a key&#8216;s value from the server. Accepts a String <tt>key</tt> or
+array of String <tt>keys</tt>.
+</p>
+<p>
+Also accepts a <tt>marshal</tt> value, which defaults to <tt>true</tt>. Set
+<tt>marshal</tt> to <tt>false</tt> if you want the <tt>value</tt> to be
+returned directly as a String. Otherwise it will be assumed to be a
+marshalled Ruby object and unmarshalled.
+</p>
+<p>
+If you pass a String key, and the key does not exist on the server,
+<b>Memcached::NotFound</b> will be raised. If you pass an array of keys,
+memcached&#8216;s <tt>multiget</tt> mode will be used, and a hash of
+key/value pairs will be returned. The hash will contain only the keys that
+were found.
+</p>
+<p>
+The multiget behavior is subject to change in the future; however, for
+multiple lookups, it is much faster than normal mode.
+</p>
+<p>
+Note that when you rescue Memcached::NotFound exceptions, you should use a
+the block rescue syntax instead of the inline syntax. Block rescues are
+very fast, but inline rescues are very slow.
+</p>
+
+<p class="source_link" id="M000024-show-link"><a onclick="toggle('M000024-source'); toggleText('M000024-link'); return false;" href="#" id="M000024-link">Show source...</a></p><div class="source" id="M000024-source"><pre>     <span class="ruby-comment cmt"># File lib/memcached/memcached.rb, line 486</span>
+486:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">get</span>(<span class="ruby-identifier">keys</span>, <span class="ruby-identifier">marshal</span>=<span class="ruby-keyword kw">true</span>)
+487:     <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">keys</span>.<span class="ruby-identifier">is_a?</span> <span class="ruby-constant">Array</span>
+488:       <span class="ruby-comment cmt"># Multi get</span>
+489:       <span class="ruby-identifier">ret</span> = <span class="ruby-constant">Lib</span>.<span class="ruby-identifier">memcached_mget</span>(<span class="ruby-ivar">@struct</span>, <span class="ruby-identifier">keys</span>);
+490:       <span class="ruby-identifier">check_return_code</span>(<span class="ruby-identifier">ret</span>, <span class="ruby-identifier">keys</span>)
+491: 
+492:       <span class="ruby-identifier">hash</span> = {}
+493:       <span class="ruby-identifier">value</span>, <span class="ruby-identifier">key</span>, <span class="ruby-identifier">flags</span>, <span class="ruby-identifier">ret</span> = <span class="ruby-constant">Lib</span>.<span class="ruby-identifier">memcached_fetch_rvalue</span>(<span class="ruby-ivar">@struct</span>)
+494:       <span class="ruby-keyword kw">while</span> <span class="ruby-identifier">ret</span> <span class="ruby-operator">!=</span> <span class="ruby-value">21</span> <span class="ruby-keyword kw">do</span> <span class="ruby-comment cmt"># Lib::MEMCACHED_END</span>
+495:         <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">ret</span> <span class="ruby-operator">==</span> <span class="ruby-value">0</span> <span class="ruby-comment cmt"># Lib::MEMCACHED_SUCCESS</span>
+496:           <span class="ruby-identifier">hash</span>[<span class="ruby-identifier">key</span>] = (<span class="ruby-identifier">marshal</span> <span class="ruby-value">? </span><span class="ruby-constant">Marshal</span>.<span class="ruby-identifier">load</span>(<span class="ruby-identifier">value</span>) <span class="ruby-operator">:</span> <span class="ruby-identifier">value</span>)
+497:         <span class="ruby-keyword kw">elsif</span> <span class="ruby-identifier">ret</span> <span class="ruby-operator">!=</span> <span class="ruby-value">16</span> <span class="ruby-comment cmt"># Lib::MEMCACHED_NOTFOUND</span>
+498:           <span class="ruby-identifier">check_return_code</span>(<span class="ruby-identifier">ret</span>, <span class="ruby-identifier">key</span>)
+499:         <span class="ruby-keyword kw">end</span>
+500:         <span class="ruby-identifier">value</span>, <span class="ruby-identifier">key</span>, <span class="ruby-identifier">flags</span>, <span class="ruby-identifier">ret</span> = <span class="ruby-constant">Lib</span>.<span class="ruby-identifier">memcached_fetch_rvalue</span>(<span class="ruby-ivar">@struct</span>)
+501:       <span class="ruby-keyword kw">end</span>
+502:       <span class="ruby-identifier">hash</span>
+503:     <span class="ruby-keyword kw">else</span>
+504:       <span class="ruby-comment cmt"># Single get</span>
+505:       <span class="ruby-identifier">value</span>, <span class="ruby-identifier">flags</span>, <span class="ruby-identifier">ret</span> = <span class="ruby-constant">Lib</span>.<span class="ruby-identifier">memcached_get_rvalue</span>(<span class="ruby-ivar">@struct</span>, <span class="ruby-identifier">keys</span>)
+506:       <span class="ruby-identifier">check_return_code</span>(<span class="ruby-identifier">ret</span>, <span class="ruby-identifier">keys</span>)
+507:       <span class="ruby-identifier">marshal</span> <span class="ruby-value">? </span><span class="ruby-constant">Marshal</span>.<span class="ruby-identifier">load</span>(<span class="ruby-identifier">value</span>) <span class="ruby-operator">:</span> <span class="ruby-identifier">value</span>
+508:     <span class="ruby-keyword kw">end</span>
+509:   <span class="ruby-keyword kw">rescue</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">e</span>
+510:     <span class="ruby-identifier">tries</span> <span class="ruby-operator">||=</span> <span class="ruby-value">0</span>
+511:     <span class="ruby-identifier">raise</span> <span class="ruby-keyword kw">unless</span> <span class="ruby-identifier">tries</span> <span class="ruby-operator">&lt;</span> <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:exception_retry_limit</span>] <span class="ruby-operator">&amp;&amp;</span> <span class="ruby-identifier">should_retry</span>(<span class="ruby-identifier">e</span>)
+512:     <span class="ruby-identifier">tries</span> <span class="ruby-operator">+=</span> <span class="ruby-value">1</span>
+513:     <span class="ruby-keyword kw">retry</span>
+514:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000025"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000025'>
+
+
+get_from_last
+
+(key, marshal=true)
+
+</a>
+</h3>
+<p>
+Gets a key&#8216;s value from the previous server. Only useful with random
+distribution.
+</p>
+
+<p class="source_link" id="M000025-show-link"><a onclick="toggle('M000025-source'); toggleText('M000025-link'); return false;" href="#" id="M000025-link">Show source...</a></p><div class="source" id="M000025-source"><pre>     <span class="ruby-comment cmt"># File lib/memcached/memcached.rb, line 517</span>
+517:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">get_from_last</span>(<span class="ruby-identifier">key</span>, <span class="ruby-identifier">marshal</span>=<span class="ruby-keyword kw">true</span>)
+518:     <span class="ruby-identifier">raise</span> <span class="ruby-constant">ArgumentError</span>, <span class="ruby-value str">&quot;get_from_last() is not useful unless :random distribution is enabled.&quot;</span> <span class="ruby-keyword kw">unless</span> <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:distribution</span>] <span class="ruby-operator">==</span> <span class="ruby-identifier">:random</span>
+519:     <span class="ruby-identifier">value</span>, <span class="ruby-identifier">flags</span>, <span class="ruby-identifier">ret</span> = <span class="ruby-constant">Lib</span>.<span class="ruby-identifier">memcached_get_from_last_rvalue</span>(<span class="ruby-ivar">@struct</span>, <span class="ruby-identifier">key</span>)
+520:     <span class="ruby-identifier">check_return_code</span>(<span class="ruby-identifier">ret</span>, <span class="ruby-identifier">key</span>)
+521:     <span class="ruby-identifier">marshal</span> <span class="ruby-value">? </span><span class="ruby-constant">Marshal</span>.<span class="ruby-identifier">load</span>(<span class="ruby-identifier">value</span>) <span class="ruby-operator">:</span> <span class="ruby-identifier">value</span>
+522:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000015"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000015'>
+
+
+increment
+
+(key, offset=1)
+
+</a>
+</h3>
+<p>
+Increment a key&#8216;s value. Accepts a String <tt>key</tt>. Raises
+<b>Memcached::NotFound</b> if the key does not exist.
+</p>
+<p>
+Also accepts an optional <tt>offset</tt> paramater, which defaults to 1.
+<tt>offset</tt> must be an integer.
+</p>
+<p>
+Note that the key must be initialized to an unmarshalled integer first, via
+<tt><a href="Memcached.html#M000013">set</a></tt>, <tt><a
+href="Memcached.html#M000014">add</a></tt>, or <tt><a
+href="Memcached.html#M000017">replace</a></tt> with <tt>marshal</tt> <a
+href="Memcached.html#M000013">set</a> to <tt>false</tt>.
+</p>
+
+<p class="source_link" id="M000015-show-link"><a onclick="toggle('M000015-source'); toggleText('M000015-link'); return false;" href="#" id="M000015-link">Show source...</a></p><div class="source" id="M000015-source"><pre>     <span class="ruby-comment cmt"># File lib/memcached/memcached.rb, line 333</span>
+333:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">increment</span>(<span class="ruby-identifier">key</span>, <span class="ruby-identifier">offset</span>=<span class="ruby-value">1</span>)
+334:     <span class="ruby-identifier">ret</span>, <span class="ruby-identifier">value</span> = <span class="ruby-constant">Lib</span>.<span class="ruby-identifier">memcached_increment</span>(<span class="ruby-ivar">@struct</span>, <span class="ruby-identifier">key</span>, <span class="ruby-identifier">offset</span>)
+335:     <span class="ruby-identifier">check_return_code</span>(<span class="ruby-identifier">ret</span>, <span class="ruby-identifier">key</span>)
+336:     <span class="ruby-identifier">value</span>
+337:   <span class="ruby-keyword kw">rescue</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">e</span>
+338:     <span class="ruby-identifier">tries</span> <span class="ruby-operator">||=</span> <span class="ruby-value">0</span>
+339:     <span class="ruby-identifier">raise</span> <span class="ruby-keyword kw">unless</span> <span class="ruby-identifier">tries</span> <span class="ruby-operator">&lt;</span> <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:exception_retry_limit</span>] <span class="ruby-operator">&amp;&amp;</span> <span class="ruby-identifier">should_retry</span>(<span class="ruby-identifier">e</span>)
+340:     <span class="ruby-identifier">tries</span> <span class="ruby-operator">+=</span> <span class="ruby-value">1</span>
+341:     <span class="ruby-keyword kw">retry</span>
+342:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000008"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000008'>
+
+
+namespace
+
+()
+
+</a>
+</h3>
+<p>
+Alias for <a href="Memcached.html#M000007">prefix_key</a>
+</p>
+
+</div>
+
+<a class="small" name="M000007"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000007'>
+
+
+prefix_key
+
+()
+
+</a>
+</h3>
+<p>
+Return the current prefix key.
+</p>
+
+<p class="source_link" id="M000007-show-link"><a onclick="toggle('M000007-source'); toggleText('M000007-link'); return false;" href="#" id="M000007-link">Show source...</a></p><div class="source" id="M000007-source"><pre>     <span class="ruby-comment cmt"># File lib/memcached/memcached.rb, line 216</span>
+216:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">prefix_key</span>
+217:     <span class="ruby-keyword kw">if</span> <span class="ruby-ivar">@struct</span>.<span class="ruby-identifier">prefix_key</span>.<span class="ruby-identifier">size</span> <span class="ruby-operator">&gt;</span> <span class="ruby-value">0</span>
+218:       <span class="ruby-ivar">@struct</span>.<span class="ruby-identifier">prefix_key</span>[<span class="ruby-value">0</span><span class="ruby-operator">..</span><span class="ruby-value">-1</span> <span class="ruby-operator">-</span> <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:prefix_delimiter</span>].<span class="ruby-identifier">size</span>]
+219:     <span class="ruby-keyword kw">else</span>
+220:       <span class="ruby-value str">&quot;&quot;</span>
+221:     <span class="ruby-keyword kw">end</span>
+222:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000019"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000019'>
+
+
+prepend
+
+(key, value)
+
+</a>
+</h3>
+<p>
+Prepends a string to a key&#8216;s value. The parameters and exception
+behavior are the same as <tt><a
+href="Memcached.html#M000018">append</a></tt>.
+</p>
+
+<p class="source_link" id="M000019-show-link"><a onclick="toggle('M000019-source'); toggleText('M000019-link'); return false;" href="#" id="M000019-link">Show source...</a></p><div class="source" id="M000019-source"><pre>     <span class="ruby-comment cmt"># File lib/memcached/memcached.rb, line 394</span>
+394:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">prepend</span>(<span class="ruby-identifier">key</span>, <span class="ruby-identifier">value</span>)
+395:     <span class="ruby-comment cmt"># Requires memcached 1.2.4</span>
+396:     <span class="ruby-identifier">check_return_code</span>(
+397:       <span class="ruby-constant">Lib</span>.<span class="ruby-identifier">memcached_prepend</span>(<span class="ruby-ivar">@struct</span>, <span class="ruby-identifier">key</span>, <span class="ruby-identifier">value</span>.<span class="ruby-identifier">to_s</span>, <span class="ruby-constant">IGNORED</span>, <span class="ruby-constant">IGNORED</span>),
+398:       <span class="ruby-identifier">key</span>
+399:     )
+400:   <span class="ruby-keyword kw">rescue</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">e</span>
+401:     <span class="ruby-identifier">tries</span> <span class="ruby-operator">||=</span> <span class="ruby-value">0</span>
+402:     <span class="ruby-identifier">raise</span> <span class="ruby-keyword kw">unless</span> <span class="ruby-identifier">tries</span> <span class="ruby-operator">&lt;</span> <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:exception_retry_limit</span>] <span class="ruby-operator">&amp;&amp;</span> <span class="ruby-identifier">should_retry</span>(<span class="ruby-identifier">e</span>)
+403:     <span class="ruby-identifier">tries</span> <span class="ruby-operator">+=</span> <span class="ruby-value">1</span>
+404:     <span class="ruby-keyword kw">retry</span>
+405:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000011"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000011'>
+
+
+quit
+
+()
+
+</a>
+</h3>
+<p>
+Disconnect from all currently connected <a
+href="Memcached.html#M000004">servers</a>
+</p>
+
+<p class="source_link" id="M000011-show-link"><a onclick="toggle('M000011-source'); toggleText('M000011-link'); return false;" href="#" id="M000011-link">Show source...</a></p><div class="source" id="M000011-source"><pre>     <span class="ruby-comment cmt"># File lib/memcached/memcached.rb, line 254</span>
+254:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">quit</span>
+255:     <span class="ruby-constant">Lib</span>.<span class="ruby-identifier">memcached_quit</span>(<span class="ruby-ivar">@struct</span>)
+256:     <span class="ruby-keyword kw">self</span>
+257:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000017"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000017'>
+
+
+replace
+
+(key, value, ttl=@default_ttl, marshal=true, flags=FLAGS)
+
+</a>
+</h3>
+<p>
+Replace a key/value pair. Raises <b>Memcached::NotFound</b> if the key does
+not exist on the server. The parameters are the same as <tt><a
+href="Memcached.html#M000013">set</a></tt>.
+</p>
+
+<p class="source_link" id="M000017-show-link"><a onclick="toggle('M000017-source'); toggleText('M000017-link'); return false;" href="#" id="M000017-link">Show source...</a></p><div class="source" id="M000017-source"><pre>     <span class="ruby-comment cmt"># File lib/memcached/memcached.rb, line 362</span>
+362:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">replace</span>(<span class="ruby-identifier">key</span>, <span class="ruby-identifier">value</span>, <span class="ruby-identifier">ttl</span>=<span class="ruby-ivar">@default_ttl</span>, <span class="ruby-identifier">marshal</span>=<span class="ruby-keyword kw">true</span>, <span class="ruby-identifier">flags</span>=<span class="ruby-constant">FLAGS</span>)
+363:     <span class="ruby-identifier">value</span> = <span class="ruby-identifier">marshal</span> <span class="ruby-value">? </span><span class="ruby-constant">Marshal</span>.<span class="ruby-identifier">dump</span>(<span class="ruby-identifier">value</span>) <span class="ruby-operator">:</span> <span class="ruby-identifier">value</span>
+364:     <span class="ruby-keyword kw">begin</span>
+365:       <span class="ruby-identifier">check_return_code</span>(
+366:          <span class="ruby-constant">Lib</span>.<span class="ruby-identifier">memcached_replace</span>(<span class="ruby-ivar">@struct</span>, <span class="ruby-identifier">key</span>, <span class="ruby-identifier">value</span>, <span class="ruby-identifier">ttl</span>, <span class="ruby-identifier">flags</span>),
+367:         <span class="ruby-identifier">key</span>
+368:       )
+369:     <span class="ruby-keyword kw">rescue</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">e</span>
+370:       <span class="ruby-identifier">tries</span> <span class="ruby-operator">||=</span> <span class="ruby-value">0</span>
+371:       <span class="ruby-identifier">raise</span> <span class="ruby-keyword kw">unless</span> <span class="ruby-identifier">tries</span> <span class="ruby-operator">&lt;</span> <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:exception_retry_limit</span>] <span class="ruby-operator">&amp;&amp;</span> <span class="ruby-identifier">should_retry</span>(<span class="ruby-identifier">e</span>)
+372:       <span class="ruby-identifier">tries</span> <span class="ruby-operator">+=</span> <span class="ruby-value">1</span>
+373:       <span class="ruby-keyword kw">retry</span>
+374:     <span class="ruby-keyword kw">end</span>
+375:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000010"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000010'>
+
+
+reset
+
+(current_servers = nil)
+
+</a>
+</h3>
+<p>
+Reset the state of the libmemcached struct. This is useful for changing the
+server list at runtime.
+</p>
+
+<p class="source_link" id="M000010-show-link"><a onclick="toggle('M000010-source'); toggleText('M000010-link'); return false;" href="#" id="M000010-link">Show source...</a></p><div class="source" id="M000010-source"><pre>     <span class="ruby-comment cmt"># File lib/memcached/memcached.rb, line 238</span>
+238:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">reset</span>(<span class="ruby-identifier">current_servers</span> = <span class="ruby-keyword kw">nil</span>)
+239:     <span class="ruby-comment cmt"># Store state and teardown</span>
+240:     <span class="ruby-identifier">current_servers</span> <span class="ruby-operator">||=</span> <span class="ruby-identifier">servers</span>
+241:     <span class="ruby-identifier">prev_prefix_key</span> = <span class="ruby-identifier">prefix_key</span>
+242:     <span class="ruby-identifier">quit</span>
+243: 
+244:     <span class="ruby-comment cmt"># Create</span>
+245:     <span class="ruby-comment cmt"># FIXME Duplicates logic with initialize()</span>
+246:     <span class="ruby-ivar">@struct</span> = <span class="ruby-constant">Lib</span>.<span class="ruby-identifier">memcached_create</span>(<span class="ruby-keyword kw">nil</span>)
+247:     <span class="ruby-identifier">set_prefix_key</span>(<span class="ruby-identifier">prev_prefix_key</span>)
+248:     <span class="ruby-identifier">set_behaviors</span>
+249:     <span class="ruby-identifier">set_credentials</span>
+250:     <span class="ruby-identifier">set_servers</span>(<span class="ruby-identifier">current_servers</span>)
+251:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000026"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000026'>
+
+
+server_by_key
+
+(key)
+
+</a>
+</h3>
+<p>
+Return the server used by a particular key.
+</p>
+
+<p class="source_link" id="M000026-show-link"><a onclick="toggle('M000026-source'); toggleText('M000026-link'); return false;" href="#" id="M000026-link">Show source...</a></p><div class="source" id="M000026-source"><pre>     <span class="ruby-comment cmt"># File lib/memcached/memcached.rb, line 527</span>
+527:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">server_by_key</span>(<span class="ruby-identifier">key</span>)
+528:     <span class="ruby-identifier">ret</span> = <span class="ruby-constant">Lib</span>.<span class="ruby-identifier">memcached_server_by_key</span>(<span class="ruby-ivar">@struct</span>, <span class="ruby-identifier">key</span>)
+529:     <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">ret</span>.<span class="ruby-identifier">is_a?</span>(<span class="ruby-constant">Array</span>)
+530:       <span class="ruby-identifier">check_return_code</span>(<span class="ruby-identifier">ret</span>.<span class="ruby-identifier">last</span>)
+531:       <span class="ruby-identifier">inspect_server</span>(<span class="ruby-identifier">ret</span>.<span class="ruby-identifier">first</span>)
+532:     <span class="ruby-keyword kw">else</span>
+533:       <span class="ruby-identifier">check_return_code</span>(<span class="ruby-identifier">ret</span>)
+534:     <span class="ruby-keyword kw">end</span>
+535:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000004"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000004'>
+
+
+servers
+
+()
+
+</a>
+</h3>
+<p>
+Return the array of server strings used to configure this instance.
+</p>
+
+<p class="source_link" id="M000004-show-link"><a onclick="toggle('M000004-source'); toggleText('M000004-link'); return false;" href="#" id="M000004-link">Show source...</a></p><div class="source" id="M000004-source"><pre>     <span class="ruby-comment cmt"># File lib/memcached/memcached.rb, line 194</span>
+194:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">servers</span>
+195:     <span class="ruby-identifier">server_structs</span>.<span class="ruby-identifier">map</span> <span class="ruby-keyword kw">do</span> <span class="ruby-operator">|</span><span class="ruby-identifier">server</span><span class="ruby-operator">|</span>
+196:       <span class="ruby-identifier">inspect_server</span>(<span class="ruby-identifier">server</span>)
+197:     <span class="ruby-keyword kw">end</span>
+198:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000013"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000013'>
+
+
+set
+
+(key, value, ttl=@default_ttl, marshal=true, flags=FLAGS)
+
+</a>
+</h3>
+<p>
+Set a key/value pair. Accepts a String <tt>key</tt> and an arbitrary Ruby
+object. Overwrites any existing value on the server.
+</p>
+<p>
+Accepts an optional <tt>ttl</tt> value to specify the maximum lifetime of
+the key on the server, in seconds. <tt>ttl</tt> must be a <tt>FixNum</tt>.
+<tt>0</tt> means no ttl. Note that there is no guarantee that the key will
+persist as long as the <tt>ttl</tt>, but it will not persist longer.
+</p>
+<p>
+Also accepts a <tt>marshal</tt> value, which defaults to <tt>true</tt>. Set
+<tt>marshal</tt> to <tt>false</tt>, and pass a String as the
+<tt>value</tt>, if you want to <a href="Memcached.html#M000013">set</a> a
+raw byte array.
+</p>
+
+<p class="source_link" id="M000013-show-link"><a onclick="toggle('M000013-source'); toggleText('M000013-link'); return false;" href="#" id="M000013-link">Show source...</a></p><div class="source" id="M000013-source"><pre>     <span class="ruby-comment cmt"># File lib/memcached/memcached.rb, line 296</span>
+296:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">set</span>(<span class="ruby-identifier">key</span>, <span class="ruby-identifier">value</span>, <span class="ruby-identifier">ttl</span>=<span class="ruby-ivar">@default_ttl</span>, <span class="ruby-identifier">marshal</span>=<span class="ruby-keyword kw">true</span>, <span class="ruby-identifier">flags</span>=<span class="ruby-constant">FLAGS</span>)
+297:     <span class="ruby-identifier">value</span> = <span class="ruby-identifier">marshal</span> <span class="ruby-value">? </span><span class="ruby-constant">Marshal</span>.<span class="ruby-identifier">dump</span>(<span class="ruby-identifier">value</span>) <span class="ruby-operator">:</span> <span class="ruby-identifier">value</span>
+298:     <span class="ruby-keyword kw">begin</span>
+299:       <span class="ruby-identifier">check_return_code</span>(
+300:         <span class="ruby-constant">Lib</span>.<span class="ruby-identifier">memcached_set</span>(<span class="ruby-ivar">@struct</span>, <span class="ruby-identifier">key</span>, <span class="ruby-identifier">value</span>, <span class="ruby-identifier">ttl</span>, <span class="ruby-identifier">flags</span>),
+301:         <span class="ruby-identifier">key</span>
+302:       )
+303:     <span class="ruby-keyword kw">rescue</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">e</span>
+304:       <span class="ruby-identifier">tries</span> <span class="ruby-operator">||=</span> <span class="ruby-value">0</span>
+305:       <span class="ruby-keyword kw">retry</span> <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">e</span>.<span class="ruby-identifier">instance_of?</span>(<span class="ruby-constant">ClientError</span>) <span class="ruby-operator">&amp;&amp;</span> <span class="ruby-operator">!</span><span class="ruby-identifier">tries</span>
+306:       <span class="ruby-identifier">raise</span> <span class="ruby-keyword kw">unless</span> <span class="ruby-identifier">tries</span> <span class="ruby-operator">&lt;</span> <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:exception_retry_limit</span>] <span class="ruby-operator">&amp;&amp;</span> <span class="ruby-identifier">should_retry</span>(<span class="ruby-identifier">e</span>)
+307:       <span class="ruby-identifier">tries</span> <span class="ruby-operator">+=</span> <span class="ruby-value">1</span>
+308:       <span class="ruby-keyword kw">retry</span>
+309:     <span class="ruby-keyword kw">end</span>
+310:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000006"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000006'>
+
+
+set_namespace
+
+(key)
+
+</a>
+</h3>
+<p>
+Alias for <a href="Memcached.html#M000005">set_prefix_key</a>
+</p>
+
+</div>
+
+<a class="small" name="M000005"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000005'>
+
+
+set_prefix_key
+
+(key)
+
+</a>
+</h3>
+<p>
+Set the prefix key.
+</p>
+
+<p class="source_link" id="M000005-show-link"><a onclick="toggle('M000005-source'); toggleText('M000005-link'); return false;" href="#" id="M000005-link">Show source...</a></p><div class="source" id="M000005-source"><pre>     <span class="ruby-comment cmt"># File lib/memcached/memcached.rb, line 201</span>
+201:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">set_prefix_key</span>(<span class="ruby-identifier">key</span>)
+202:     <span class="ruby-identifier">check_return_code</span>(
+203:       <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">key</span>
+204:         <span class="ruby-identifier">key</span> <span class="ruby-operator">+=</span> <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:prefix_delimiter</span>]
+205:         <span class="ruby-identifier">raise</span> <span class="ruby-constant">ArgumentError</span>, <span class="ruby-node">&quot;Max prefix key + prefix delimiter size is #{Lib::MEMCACHED_PREFIX_KEY_MAX_SIZE - 1}&quot;</span> <span class="ruby-keyword kw">unless</span>
+206:           <span class="ruby-identifier">key</span>.<span class="ruby-identifier">size</span> <span class="ruby-operator">&lt;</span> <span class="ruby-constant">Lib</span><span class="ruby-operator">::</span><span class="ruby-constant">MEMCACHED_PREFIX_KEY_MAX_SIZE</span>
+207:         <span class="ruby-constant">Lib</span>.<span class="ruby-identifier">memcached_callback_set</span>(<span class="ruby-ivar">@struct</span>, <span class="ruby-constant">Lib</span><span class="ruby-operator">::</span><span class="ruby-constant">MEMCACHED_CALLBACK_PREFIX_KEY</span>, <span class="ruby-identifier">key</span>)
+208:       <span class="ruby-keyword kw">else</span>
+209:         <span class="ruby-constant">Lib</span>.<span class="ruby-identifier">memcached_callback_set</span>(<span class="ruby-ivar">@struct</span>, <span class="ruby-constant">Lib</span><span class="ruby-operator">::</span><span class="ruby-constant">MEMCACHED_CALLBACK_PREFIX_KEY</span>, <span class="ruby-value str">&quot;&quot;</span>)
+210:       <span class="ruby-keyword kw">end</span>
+211:     )
+212:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000003"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000003'>
+
+
+set_servers
+
+(servers)
+
+</a>
+</h3>
+<p>
+Set the server list. FIXME Does not necessarily free any existing server
+structs.
+</p>
+
+<p class="source_link" id="M000003-show-link"><a onclick="toggle('M000003-source'); toggleText('M000003-link'); return false;" href="#" id="M000003-link">Show source...</a></p><div class="source" id="M000003-source"><pre>     <span class="ruby-comment cmt"># File lib/memcached/memcached.rb, line 170</span>
+170:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">set_servers</span>(<span class="ruby-identifier">servers</span>)
+171:     <span class="ruby-constant">Array</span>(<span class="ruby-identifier">servers</span>).<span class="ruby-identifier">each_with_index</span> <span class="ruby-keyword kw">do</span> <span class="ruby-operator">|</span><span class="ruby-identifier">server</span>, <span class="ruby-identifier">index</span><span class="ruby-operator">|</span>
+172:       <span class="ruby-comment cmt"># Socket</span>
+173:       <span class="ruby-identifier">check_return_code</span>(
+174:         <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">server</span>.<span class="ruby-identifier">is_a?</span>(<span class="ruby-constant">String</span>) <span class="ruby-keyword kw">and</span> <span class="ruby-constant">File</span>.<span class="ruby-identifier">socket?</span>(<span class="ruby-identifier">server</span>)
+175:           <span class="ruby-identifier">args</span> = [<span class="ruby-ivar">@struct</span>, <span class="ruby-identifier">server</span>, <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:default_weight</span>].<span class="ruby-identifier">to_i</span>]
+176:           <span class="ruby-constant">Lib</span>.<span class="ruby-identifier">memcached_server_add_unix_socket_with_weight</span>(<span class="ruby-operator">*</span><span class="ruby-identifier">args</span>)
+177:         <span class="ruby-comment cmt"># Network</span>
+178:         <span class="ruby-keyword kw">elsif</span> <span class="ruby-identifier">server</span>.<span class="ruby-identifier">is_a?</span>(<span class="ruby-constant">String</span>) <span class="ruby-keyword kw">and</span> <span class="ruby-identifier">server</span> <span class="ruby-operator">=~</span> <span class="ruby-regexp re">/^[\w\d\.-]+(:\d{1,5}){0,2}$/</span>
+179:           <span class="ruby-identifier">host</span>, <span class="ruby-identifier">port</span>, <span class="ruby-identifier">weight</span> = <span class="ruby-identifier">server</span>.<span class="ruby-identifier">split</span>(<span class="ruby-value str">&quot;:&quot;</span>)
+180:           <span class="ruby-identifier">args</span> = [<span class="ruby-ivar">@struct</span>, <span class="ruby-identifier">host</span>, <span class="ruby-identifier">port</span>.<span class="ruby-identifier">to_i</span>, (<span class="ruby-identifier">weight</span> <span class="ruby-operator">||</span> <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:default_weight</span>]).<span class="ruby-identifier">to_i</span>]
+181:           <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:use_udp</span>]
+182:             <span class="ruby-constant">Lib</span>.<span class="ruby-identifier">memcached_server_add_udp_with_weight</span>(<span class="ruby-operator">*</span><span class="ruby-identifier">args</span>)
+183:           <span class="ruby-keyword kw">else</span>
+184:             <span class="ruby-constant">Lib</span>.<span class="ruby-identifier">memcached_server_add_with_weight</span>(<span class="ruby-operator">*</span><span class="ruby-identifier">args</span>)
+185:           <span class="ruby-keyword kw">end</span>
+186:         <span class="ruby-keyword kw">else</span>
+187:           <span class="ruby-identifier">raise</span> <span class="ruby-constant">ArgumentError</span>, <span class="ruby-value str">&quot;Servers must be either in the format 'host:port[:weight]' (e.g., 'localhost:11211' or  'localhost:11211:10') for a network server, or a valid path to a Unix domain socket (e.g., /var/run/memcached).&quot;</span>
+188:         <span class="ruby-keyword kw">end</span>
+189:       )
+190:     <span class="ruby-keyword kw">end</span>
+191:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000012"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000012'>
+
+
+should_retry
+
+(e)
+
+</a>
+</h3>
+<p>
+Should retry the exception
+</p>
+
+<p class="source_link" id="M000012-show-link"><a onclick="toggle('M000012-source'); toggleText('M000012-link'); return false;" href="#" id="M000012-link">Show source...</a></p><div class="source" id="M000012-source"><pre>     <span class="ruby-comment cmt"># File lib/memcached/memcached.rb, line 260</span>
+260:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">should_retry</span>(<span class="ruby-identifier">e</span>)
+261:     <span class="ruby-identifier">options</span>[<span class="ruby-identifier">:exceptions_to_retry</span>].<span class="ruby-identifier">each</span> {<span class="ruby-operator">|</span><span class="ruby-identifier">ex_class</span><span class="ruby-operator">|</span> <span class="ruby-keyword kw">return</span> <span class="ruby-keyword kw">true</span> <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">e</span>.<span class="ruby-identifier">instance_of?</span>(<span class="ruby-identifier">ex_class</span>)}
+262:     <span class="ruby-keyword kw">false</span>
+263:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000027"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000027'>
+
+
+stats
+
+(subcommand = nil)
+
+</a>
+</h3>
+<p>
+Return a Hash of statistics responses from the <a
+href="Memcached.html#M000013">set</a> of <a
+href="Memcached.html#M000004">servers</a>. Each value is an array with one
+entry for each server, in the same order the <a
+href="Memcached.html#M000004">servers</a> were defined.
+</p>
+
+<p class="source_link" id="M000027-show-link"><a onclick="toggle('M000027-source'); toggleText('M000027-link'); return false;" href="#" id="M000027-link">Show source...</a></p><div class="source" id="M000027-source"><pre>     <span class="ruby-comment cmt"># File lib/memcached/memcached.rb, line 538</span>
+538:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">stats</span>(<span class="ruby-identifier">subcommand</span> = <span class="ruby-keyword kw">nil</span>)
+539:     <span class="ruby-identifier">stats</span> = <span class="ruby-constant">Hash</span>.<span class="ruby-identifier">new</span>([])
+540: 
+541:     <span class="ruby-identifier">stat_struct</span>, <span class="ruby-identifier">ret</span> = <span class="ruby-constant">Lib</span>.<span class="ruby-identifier">memcached_stat</span>(<span class="ruby-ivar">@struct</span>, <span class="ruby-identifier">subcommand</span>)
+542:     <span class="ruby-identifier">check_return_code</span>(<span class="ruby-identifier">ret</span>)
+543: 
+544:     <span class="ruby-identifier">keys</span>, <span class="ruby-identifier">ret</span> = <span class="ruby-constant">Lib</span>.<span class="ruby-identifier">memcached_stat_get_keys</span>(<span class="ruby-ivar">@struct</span>, <span class="ruby-identifier">stat_struct</span>)
+545:     <span class="ruby-identifier">check_return_code</span>(<span class="ruby-identifier">ret</span>)
+546: 
+547:     <span class="ruby-identifier">keys</span>.<span class="ruby-identifier">each</span> <span class="ruby-keyword kw">do</span> <span class="ruby-operator">|</span><span class="ruby-identifier">key</span><span class="ruby-operator">|</span>
+548:        <span class="ruby-identifier">server_structs</span>.<span class="ruby-identifier">size</span>.<span class="ruby-identifier">times</span> <span class="ruby-keyword kw">do</span> <span class="ruby-operator">|</span><span class="ruby-identifier">index</span><span class="ruby-operator">|</span>
+549: 
+550:          <span class="ruby-identifier">value</span>, <span class="ruby-identifier">ret</span> = <span class="ruby-constant">Lib</span>.<span class="ruby-identifier">memcached_stat_get_value</span>(
+551:            <span class="ruby-ivar">@struct</span>,
+552:            <span class="ruby-constant">Lib</span>.<span class="ruby-identifier">memcached_select_stat_at</span>(<span class="ruby-ivar">@struct</span>, <span class="ruby-identifier">stat_struct</span>, <span class="ruby-identifier">index</span>),
+553:            <span class="ruby-identifier">key</span>)
+554:          <span class="ruby-identifier">check_return_code</span>(<span class="ruby-identifier">ret</span>, <span class="ruby-identifier">key</span>)
+555: 
+556:          <span class="ruby-identifier">value</span> = <span class="ruby-keyword kw">case</span> <span class="ruby-identifier">value</span>
+557:            <span class="ruby-keyword kw">when</span> <span class="ruby-regexp re">/^\d+\.\d+$/</span> <span class="ruby-keyword kw">then</span> <span class="ruby-identifier">value</span>.<span class="ruby-identifier">to_f</span>
+558:            <span class="ruby-keyword kw">when</span> <span class="ruby-regexp re">/^\d+$/</span> <span class="ruby-keyword kw">then</span> <span class="ruby-identifier">value</span>.<span class="ruby-identifier">to_i</span>
+559:            <span class="ruby-keyword kw">else</span> <span class="ruby-identifier">value</span>
+560:          <span class="ruby-keyword kw">end</span>
+561: 
+562:          <span class="ruby-identifier">stats</span>[<span class="ruby-identifier">key</span>.<span class="ruby-identifier">to_sym</span>] <span class="ruby-operator">+=</span> [<span class="ruby-identifier">value</span>]
+563:        <span class="ruby-keyword kw">end</span>
+564:     <span class="ruby-keyword kw">end</span>
+565: 
+566:     <span class="ruby-constant">Lib</span>.<span class="ruby-identifier">memcached_stat_free</span>(<span class="ruby-ivar">@struct</span>, <span class="ruby-identifier">stat_struct</span>)
+567:     <span class="ruby-identifier">stats</span>
+568:   <span class="ruby-keyword kw">rescue</span> <span class="ruby-constant">Memcached</span><span class="ruby-operator">::</span><span class="ruby-constant">SomeErrorsWereReported</span> =<span class="ruby-operator">&gt;</span> <span class="ruby-identifier">_</span>
+569:     <span class="ruby-identifier">e</span> = <span class="ruby-identifier">_</span>.<span class="ruby-identifier">class</span>.<span class="ruby-identifier">new</span>(<span class="ruby-value str">&quot;Error getting stats&quot;</span>)
+570:     <span class="ruby-identifier">e</span>.<span class="ruby-identifier">set_backtrace</span>(<span class="ruby-identifier">_</span>.<span class="ruby-identifier">backtrace</span>)
+571:     <span class="ruby-identifier">raise</span> <span class="ruby-identifier">e</span>
+572:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+
+<h1>Private Instance Methods</h1>
+
+
+<a class="small" name="M000028"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000028'>
+
+
+check_return_code
+
+(ret, key = nil)
+
+</a>
+</h3>
+<p>
+Checks the return code from <a href="Rlibmemcached.html">Rlibmemcached</a>
+against the exception list. Raises the corresponding exception if the
+return code is not Memcached::Success or Memcached::ActionQueued. Accepts
+an integer return code and an optional key, for exception messages.
+</p>
+
+<p class="source_link" id="M000028-show-link"><a onclick="toggle('M000028-source'); toggleText('M000028-link'); return false;" href="#" id="M000028-link">Show source...</a></p><div class="source" id="M000028-source"><pre>     <span class="ruby-comment cmt"># File lib/memcached/memcached.rb, line 579</span>
+579:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">check_return_code</span>(<span class="ruby-identifier">ret</span>, <span class="ruby-identifier">key</span> = <span class="ruby-keyword kw">nil</span>) <span class="ruby-comment cmt">#:doc:</span>
+580:     <span class="ruby-keyword kw">if</span> <span class="ruby-identifier">ret</span> <span class="ruby-operator">==</span> <span class="ruby-value">0</span> <span class="ruby-comment cmt"># Lib::MEMCACHED_SUCCESS</span>
+581:     <span class="ruby-keyword kw">elsif</span> <span class="ruby-identifier">ret</span> <span class="ruby-operator">==</span> <span class="ruby-value">32</span> <span class="ruby-comment cmt"># Lib::MEMCACHED_BUFFERED</span>
+582:     <span class="ruby-keyword kw">elsif</span> <span class="ruby-identifier">ret</span> <span class="ruby-operator">==</span> <span class="ruby-value">16</span>
+583:       <span class="ruby-identifier">raise</span> <span class="ruby-ivar">@not_found</span> <span class="ruby-comment cmt"># Lib::MEMCACHED_NOTFOUND</span>
+584:     <span class="ruby-keyword kw">elsif</span> <span class="ruby-identifier">ret</span> <span class="ruby-operator">==</span> <span class="ruby-value">14</span>
+585:       <span class="ruby-identifier">raise</span> <span class="ruby-ivar">@not_stored</span> <span class="ruby-comment cmt"># Lib::MEMCACHED_NOTSTORED</span>
+586:     <span class="ruby-keyword kw">else</span>
+587:       <span class="ruby-identifier">reraise</span>(<span class="ruby-identifier">key</span>, <span class="ruby-identifier">ret</span>)
+588:     <span class="ruby-keyword kw">end</span>
+589:   <span class="ruby-keyword kw">rescue</span> <span class="ruby-constant">TypeError</span>
+590:     <span class="ruby-identifier">reraise</span>(<span class="ruby-identifier">key</span>, <span class="ruby-identifier">ret</span>)
+591:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+<a class="small" name="M000001"><br/></a>
+<div class="method_block"><h3>
+<a href='#M000001'>
+
+
+set_behavior
+
+(behavior, value)
+
+</a>
+</h3>
+<p>
+Set a behavior option for this <a href="Memcached.html">Memcached</a>
+instance. Accepts a Symbol <tt>behavior</tt> and either <tt>true</tt>,
+<tt>false</tt>, or a Symbol for <tt>value</tt>. Arguments are validated and
+converted into integers for the struct setter method.
+</p>
+
+<p class="source_link" id="M000001-show-link"><a onclick="toggle('M000001-source'); toggleText('M000001-link'); return false;" href="#" id="M000001-link">Show source...</a></p><div class="source" id="M000001-source"><pre>    <span class="ruby-comment cmt"># File lib/memcached/behaviors.rb, line 39</span>
+39:   <span class="ruby-keyword kw">def</span> <span class="ruby-identifier">set_behavior</span>(<span class="ruby-identifier">behavior</span>, <span class="ruby-identifier">value</span>) <span class="ruby-comment cmt">#:doc:</span>
+40:     <span class="ruby-identifier">raise</span> <span class="ruby-constant">ArgumentError</span>, <span class="ruby-node">&quot;No behavior #{behavior.inspect}&quot;</span> <span class="ruby-keyword kw">unless</span> <span class="ruby-identifier">b_id</span> = <span class="ruby-constant">BEHAVIORS</span>[<span class="ruby-identifier">behavior</span>]
+41: 
+42:     <span class="ruby-comment cmt"># Scoped validations; annoying</span>
+43:     <span class="ruby-identifier">msg</span> =  <span class="ruby-node">&quot;Invalid behavior value #{value.inspect} for #{behavior.inspect}&quot;</span>
+44:     <span class="ruby-keyword kw">case</span> <span class="ruby-identifier">behavior</span>
+45:       <span class="ruby-keyword kw">when</span> <span class="ruby-identifier">:hash</span> <span class="ruby-keyword kw">then</span> <span class="ruby-identifier">raise</span>(<span class="ruby-constant">ArgumentError</span>, <span class="ruby-identifier">msg</span>) <span class="ruby-keyword kw">unless</span> <span class="ruby-constant">HASH_VALUES</span>[<span class="ruby-identifier">value</span>]
+46:       <span class="ruby-keyword kw">when</span> <span class="ruby-identifier">:distribution</span> <span class="ruby-keyword kw">then</span> <span class="ruby-identifier">raise</span>(<span class="ruby-constant">ArgumentError</span>, <span class="ruby-identifier">msg</span>) <span class="ruby-keyword kw">unless</span> <span class="ruby-constant">DISTRIBUTION_VALUES</span>[<span class="ruby-identifier">value</span>]
+47:       <span class="ruby-keyword kw">when</span> <span class="ruby-operator">*</span><span class="ruby-constant">DIRECT_VALUE_BEHAVIORS</span> <span class="ruby-keyword kw">then</span> <span class="ruby-identifier">raise</span>(<span class="ruby-constant">ArgumentError</span>, <span class="ruby-identifier">msg</span>) <span class="ruby-keyword kw">unless</span> <span class="ruby-identifier">value</span>.<span class="ruby-identifier">is_a?</span>(<span class="ruby-constant">Numeric</span>) <span class="ruby-keyword kw">and</span> <span class="ruby-identifier">value</span> <span class="ruby-operator">&gt;=</span> <span class="ruby-value">0</span>
+48:       <span class="ruby-keyword kw">else</span>
+49:         <span class="ruby-identifier">raise</span>(<span class="ruby-constant">ArgumentError</span>, <span class="ruby-identifier">msg</span>) <span class="ruby-keyword kw">unless</span> <span class="ruby-constant">BEHAVIOR_VALUES</span>[<span class="ruby-identifier">value</span>]
+50:     <span class="ruby-keyword kw">end</span>
+51: 
+52:     <span class="ruby-identifier">lib_value</span> = <span class="ruby-constant">BEHAVIOR_VALUES</span>[<span class="ruby-identifier">value</span>] <span class="ruby-operator">||</span> (<span class="ruby-identifier">value</span> <span class="ruby-operator">*</span> (<span class="ruby-constant">CONVERSION_FACTORS</span>[<span class="ruby-identifier">behavior</span>] <span class="ruby-operator">||</span> <span class="ruby-value">1</span>)).<span class="ruby-identifier">to_i</span>
+53:     <span class="ruby-comment cmt">#STDERR.puts &quot;Setting #{behavior}:#{b_id} =&gt; #{value} (#{lib_value})&quot;</span>
+54:     <span class="ruby-constant">Lib</span>.<span class="ruby-identifier">memcached_behavior_set</span>(<span class="ruby-ivar">@struct</span>, <span class="ruby-identifier">b_id</span>, <span class="ruby-identifier">lib_value</span>)
+55:     <span class="ruby-comment cmt">#STDERR.puts &quot; -&gt; set to #{get_behavior(behavior).inspect}&quot;</span>
+56:   <span class="ruby-keyword kw">end</span></pre></div>
+</div>
+
+
+
+
+
+</div><div class="clear" id="footer">Generated on Jan 21, 2008 / Allison 2 &copy; 2007 <a href="http://cloudbur.st">Cloudburst, LLC</a></div></div></body></html>
