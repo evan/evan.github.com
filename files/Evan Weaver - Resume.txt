@@ -41,16 +41,10 @@ Technical:
 
 PROFESSIONAL EXPERIENCE
 
-SeeControl. San Francisco, CA. 2014-present. Technical advisor.
-
-Eagle Alpha. Dublin, Ireland. 2014-present. Technical advisor.
-
 FaunaDB. San Francisco, CA. 2012-present.
 
-In 2012, I co-founded FaunaDB, a distributed database startup, where I 
-currently serve as CEO.
-
-Breeze. San Francisco, CA. 2012-present. Technical advisor.
+In 2012, I cofounded FaunaDB, a distributed database startup, where I currently
+serve as CEO.
 
 Twitter. San Francisco, CA. 2008-2011.
 
@@ -94,10 +88,13 @@ first cut my teeth on high-scale Ruby on Rails websites.
     - Architected and launched a total rewrite of UrbanBaby.com
     - Acted as lead developer on CHOW.com after the original team left
 
-Other positions held: Founder, Cloudburst, 2006-present. Enterprise Resource
-Management Consultant at SAP AG, Wilmington, DE, 2005-2006. Research Assistant,
-Oceanography Department, Imperial College London, 2004. Research Assistant,
-Mechanical Engineering Department, University of Delaware, 2001.
+Other positions held: Technical Advisor, SeeControl, San Francisco, CA.
+2014-present. Technical Advisor, Eagle Alpha, Dublin, Ireland, 2014-present.
+Technical Advisor, Breeze, San Francisco, CA, 2012-present. Founder, Cloudburst,
+2006-present. Enterprise Resource Management Consultant at SAP AG, Wilmington,
+DE, 2005-2006. Research Assistant, Oceanography Department, Imperial College
+London, 2004. Research Assistant, Mechanical Engineering Department, University
+of Delaware, 2001.
 
 EDUCATION
 
